@@ -42,4 +42,4 @@ The user enters their tier (1-5) and selects whether it is High or Low. The prog
 
 ### Purpose
 
-This project was created as a programming practice project during the first year of DAM.
+This project was created as a programming practice during the first year of DAM.
