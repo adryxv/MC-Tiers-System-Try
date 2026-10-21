@@ -113,7 +113,7 @@
             <!-- Player Name Input -->
             <div class="mb-4">
                 <label class="text-xs uppercase tracking-wider text-gray-400 font-semibold block mb-1">Player Tag</label>
-                <input type="text" id="playerName" value="Steve_PvP" class="bg-mc-bg border border-mc-border rounded-lg px-3 py-2 w-full text-white font-pixel focus:outline-none focus:border-mc-green transition" placeholder="Enter username...">
+                <input type="text" id="playerName" value="" class="bg-mc-bg border border-mc-border rounded-lg px-3 py-2 w-full text-white font-pixel focus:outline-none focus:border-mc-green transition" placeholder="Enter username...">
             </div>
 
             <!-- Total Points Badge -->
@@ -248,7 +248,7 @@
 
     // --- STATE MANAGEMENT ---
     let state = {
-      playerName: "Steve_PvP",
+      playerName: "",
       modesState: MODES.map(() => ({ tier: 0, high: true }))
     };
 
@@ -281,7 +281,7 @@
       } catch (e) {
         console.error("Could not load from localStorage", e);
       }
-      document.getElementById('playerName').value = state.playerName || "Steve_PvP";
+      document.getElementById('playerName').value = state.playerName || "";
     }
 
     // --- RENDER FUNCTIONS ---
@@ -304,23 +304,19 @@
               </div>
             </div>
 
-            <!-- Bottom Row: Tier Buttons + HT/LT Toggle -->
-            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-mc-border/40">
-              <!-- Tier Selector (0 to 5) -->
-              <div class="flex items-center gap-1">
-                <button type="button" data-tier="0" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">0</button>
-                <button type="button" data-tier="1" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T1</button>
-                <button type="button" data-tier="2" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T2</button>
-                <button type="button" data-tier="3" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T3</button>
-                <button type="button" data-tier="4" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T4</button>
-                <button type="button" data-tier="5" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T5</button>
-              </div>
-
-              <!-- HT / LT Toggle -->
-              <div class="flex items-center bg-mc-bg p-0.5 rounded-lg border border-mc-border">
-                <button type="button" data-high="true" class="ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400">HT</button>
-                <button type="button" data-high="false" class="lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400">LT</button>
-              </div>
+            <!-- Linear Tier Buttons: 0, HT1, LT1, HT2, LT2... -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-mc-border/40">
+              <button type="button" data-tier="0" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">0</button>
+              <button type="button" data-tier="1" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT1</button>
+              <button type="button" data-tier="1" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT1</button>
+              <button type="button" data-tier="2" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT2</button>
+              <button type="button" data-tier="2" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT2</button>
+              <button type="button" data-tier="3" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT3</button>
+              <button type="button" data-tier="3" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT3</button>
+              <button type="button" data-tier="4" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT4</button>
+              <button type="button" data-tier="4" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT4</button>
+              <button type="button" data-tier="5" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT5</button>
+              <button type="button" data-tier="5" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT5</button>
             </div>
           </div>
         `;
@@ -354,36 +350,25 @@
         // Render Card state
         card.querySelector('.mode-pts').textContent = pts;
 
-        // Tier buttons active styling
-        card.querySelectorAll('.tier-btn').forEach(btn => {
-          const t = parseInt(btn.dataset.tier);
-          if (t === mState.tier) {
-            btn.className = "tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-accent text-white border border-blue-400 shadow-sm";
+        // Linear buttons active styling
+        card.querySelectorAll('.tier-linear-btn').forEach(btn => {
+          const btnTier = parseInt(btn.dataset.tier);
+          const btnHigh = btn.dataset.high === "true";
+
+          if (mState.tier === 0) {
+            if (btnTier === 0) {
+              btn.className = "tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-accent text-white border border-blue-400 shadow-sm";
+            } else {
+              btn.className = "tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition";
+            }
           } else {
-            btn.className = "tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition";
+            if (btnTier === mState.tier && btnHigh === mState.high) {
+              btn.className = "tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-accent text-white border border-blue-400 shadow-sm";
+            } else {
+              btn.className = "tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition";
+            }
           }
         });
-
-        // HT/LT toggle buttons styling
-        const htBtn = card.querySelector('.ht-btn');
-        const ltBtn = card.querySelector('.lt-btn');
-
-        if (mState.tier === 0) {
-          htBtn.disabled = true;
-          ltBtn.disabled = true;
-          htBtn.className = "ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-600 cursor-not-allowed";
-          ltBtn.className = "lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-600 cursor-not-allowed";
-        } else {
-          htBtn.disabled = false;
-          ltBtn.disabled = false;
-          if (mState.high) {
-            htBtn.className = "ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition bg-mc-green text-black font-pixel shadow-sm";
-            ltBtn.className = "lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400 hover:text-white";
-          } else {
-            htBtn.className = "ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400 hover:text-white";
-            ltBtn.className = "lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition bg-mc-gold text-black font-pixel shadow-sm";
-          }
-        }
       });
 
       // Render Total Points
@@ -468,33 +453,18 @@
         saveState();
       });
 
-      // Modes container delegate click for Tiers and HT/LT buttons
+      // Modes container delegate click for linear tier buttons
       document.getElementById('modesContainer').addEventListener('click', (e) => {
         const card = e.target.closest('.mode-card');
         if (!card) return;
         const idx = parseInt(card.dataset.index);
 
-        // Tier click
-        const tierBtn = e.target.closest('.tier-btn');
-        if (tierBtn) {
-          state.modesState[idx].tier = parseInt(tierBtn.dataset.tier);
+        const btn = e.target.closest('.tier-linear-btn');
+        if (btn) {
+          const tier = parseInt(btn.dataset.tier);
+          const high = btn.dataset.high === "true";
+          state.modesState[idx] = { tier, high };
           calculateAndRender();
-          return;
-        }
-
-        // HT / LT click
-        const htBtn = e.target.closest('.ht-btn');
-        if (htBtn && !htBtn.disabled) {
-          state.modesState[idx].high = true;
-          calculateAndRender();
-          return;
-        }
-
-        const ltBtn = e.target.closest('.lt-btn');
-        if (ltBtn && !ltBtn.disabled) {
-          state.modesState[idx].high = false;
-          calculateAndRender();
-          return;
         }
       });
 
