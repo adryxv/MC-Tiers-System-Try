@@ -6,8 +6,16 @@ record ModeResult(String mode, int tier, boolean isHigh, int points) {}
 void main() {
     // Points System and ranks MCtiers
 
-    String[] modes = {"Sword", "Axe", "Pot", "UHC", "NethOP", "SMP", "Mace",
-            "Vanilla", "Spear Mace", "XbowCart", "Cart", "Creeper", "Bow"};
+    IO.print("Introduce tu tag de jugador: ");
+    String playerName = IO.readln();
+    if (playerName == null || playerName.isBlank()) {
+        playerName = "Steve_PvP";
+    }
+
+    String[] modes = {
+            "Sword", "Axe", "Pot", "UHC", "NethOP", "SMP", "Mace",
+            "Spear Mace", "Vanilla", "XbowCart", "Cart", "Creeper", "Bow"
+    };
 
     List<ModeResult> results = new ArrayList<>();
     int totalPoints = 0;
@@ -18,7 +26,7 @@ void main() {
         totalPoints += result.points();
     }
 
-    IO.println("\n--- Summary ---");
+    IO.println("\n--- Resumen de Tier List: " + playerName + " ---");
     for (ModeResult r : results) {
         if (r.tier() == 0) {
             IO.println(r.mode() + ": no tier");
@@ -67,10 +75,15 @@ ModeResult askMode(String mode) {
 
     while (tier < 0 || tier > 5) {
         IO.print(mode + " tier (1-5, 0 = no tier): ");
+        String input = IO.readln();
+        if (input == null) {
+            return new ModeResult(mode, 0, false, 0);
+        }
+
         try {
-            tier = Integer.parseInt(IO.readln().trim());
+            tier = Integer.parseInt(input.trim());
         } catch (NumberFormatException e) {
-            IO.println("Enter a number.");
+            IO.println("Enter a valid number.");
             continue;
         }
         if (tier < 0 || tier > 5) {
@@ -85,7 +98,9 @@ ModeResult askMode(String mode) {
     String level = "";
     while (!level.equals("h") && !level.equals("l")) {
         IO.print("High or Low tier? (h/l): ");
-        level = IO.readln().trim().toLowerCase();
+        String input = IO.readln();
+        if (input == null) break;
+        level = input.trim().toLowerCase();
     }
     boolean isHigh = level.equals("h");
 
@@ -93,23 +108,19 @@ ModeResult askMode(String mode) {
 }
 
 int getTierPoints(int tier, boolean isHigh) {
-    if (tier == 1) {
-        return isHigh ? 60 : 45;
-    } else if (tier == 2) {
-        return isHigh ? 30 : 20;
-    } else if (tier == 3) {
-        return isHigh ? 10 : 6;
-    } else if (tier == 4) {
-        return isHigh ? 4 : 3;
-    } else {
-        return isHigh ? 2 : 1;
-    }
+    return switch (tier) {
+        case 1 -> isHigh ? 60 : 45;
+        case 2 -> isHigh ? 30 : 20;
+        case 3 -> isHigh ? 10 : 6;
+        case 4 -> isHigh ? 4 : 3;
+        case 5 -> isHigh ? 2 : 1;
+        default -> 0;
+    };
 }
 
-// 0 = no rank, 1 = Elite, 2 = Elite+, 3 = MVP+, 4 = VIP, 5 = VIP+
 int getRankLevel(List<ModeResult> results) {
     int ht1 = 0;
-    int ht2OrBetter = 0; // HT1 also counts here
+    int ht2OrBetter = 0;
 
     for (ModeResult r : results) {
         if (r.isHigh() && r.tier() >= 1 && r.tier() <= 2) {
