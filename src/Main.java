@@ -39,12 +39,17 @@ void main() {
         totalPoints += result.points();
     }
 
-    // 2. Ask for main mode to show leaderboard simulation & reference link
-    IO.print("\nWhat is your main mode?: ");
-    String mainModeInput = IO.readln();
+    // 2. Ask for main mode with validation loop (repeats until a valid mode is entered)
     ModeResult mainModeResult = null;
+    while (mainModeResult == null) {
+        IO.print("\nWhat is your main mode?: ");
+        String mainModeInput = IO.readln();
 
-    if (mainModeInput != null) {
+        if (mainModeInput == null || mainModeInput.isBlank()) {
+            IO.println("Please enter a mode name.");
+            continue;
+        }
+
         String query = mainModeInput.trim().toLowerCase();
         for (ModeResult r : results) {
             if (r.mode().toLowerCase().equals(query) || r.urlKey().toLowerCase().equals(query)) {
@@ -52,9 +57,13 @@ void main() {
                 break;
             }
         }
+
+        if (mainModeResult == null) {
+            IO.println("Invalid mode name. Please choose one from the list.");
+        }
     }
 
-    // --- SUMMARY ---
+    // --- SUMMARY HEADER ---
     IO.println("\n--- Tier List Summary: " + playerName + " ---");
     for (ModeResult r : results) {
         if (r.tier() == 0) {
@@ -65,6 +74,10 @@ void main() {
         }
     }
 
+    // Tabla de referencia colocada tras la lista de modos
+    printRankInfoTable();
+
+    // --- RESULTADOS FINALES Y PERKS ---
     int rankLevel = getRankLevel(results);
 
     IO.println("\nTotal points: " + totalPoints);
@@ -72,17 +85,17 @@ void main() {
     IO.println("Rank: " + getRankName(rankLevel));
 
     // 3. Display estimated leaderboard position & official reference URL
-    if (mainModeResult != null && mainModeResult.tier() > 0) {
+    if (mainModeResult.tier() > 0) {
         String referenceUrl = "https://www.mcpvp.com/tiers/" + mainModeResult.urlKey();
         IO.println("\n[Global Leaderboard Simulation]");
         IO.println("Main mode: " + mainModeResult.mode() + " (" + (mainModeResult.isHigh() ? "HT" : "LT") + mainModeResult.tier() + ")");
         IO.println("Estimated rank position: " + getWebLeaderboardPosition(mainModeResult));
         IO.println("Official reference: " + referenceUrl);
     } else {
-        IO.println("\n[Leaderboard]: No valid main mode with a tier was specified.");
+        IO.println("\n[Leaderboard]: Your selected main mode has no tier assigned.");
     }
 
-    IO.println("\nPerks:");
+    IO.println("\nUnlocked Perks:");
     List<String> perks = getPerks(rankLevel);
     if (perks.isEmpty()) {
         IO.println("  (none)");
@@ -205,4 +218,15 @@ List<String> getPerks(int rankLevel) {
         perks.add("Wind charges");
     }
     return perks;
+}
+
+void printRankInfoTable() {
+    IO.println("\n--- Ranks & Perks Reference Table ---");
+    IO.println(String.format("%-10s | %-25s | %-35s", "Rank", "Requirements", "Perks"));
+    IO.println("-".repeat(78));
+    IO.println(String.format("%-10s | %-25s | %-35s", "Elite", "1x HT2+", "Rank tag in chat"));
+    IO.println(String.format("%-10s | %-25s | %-35s", "Elite+", "2x HT2+", "Customize armor trim & shield"));
+    IO.println(String.format("%-10s | %-25s | %-35s", "MVP+", "1x HT1", "Access to Fly command"));
+    IO.println(String.format("%-10s | %-25s | %-35s", "VIP", "2x HT1", "Elytra & fireworks in lobby"));
+    IO.println(String.format("%-10s | %-25s | %-35s", "VIP+", "4x HT1", "Tier tester, Spear lunge 3, Wind charges"));
 }
