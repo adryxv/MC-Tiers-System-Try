@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft Tier System - Player Dashboard</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          darkMode: 'class',
+          theme: {
+            extend: {
+              fontFamily: {
+                pixel: ['Silkscreen', 'monospace'],
+                sans: ['Inter', 'sans-serif'],
+              },
+              colors: {
+                mc: {
+                  bg: '#0e1217',
+                  panel: '#161c23',
+                  card: '#1e2631',
+                  border: '#2e3947',
+                  green: '#22c55e',
+                  greenGlow: '#16a34a',
+                  gold: '#eab308',
+                  accent: '#3b82f6',
+                  purple: '#a855f7',
+                  red: '#ef4444'
+                }
+              }
+            }
+          }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #0e1217;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #2e3947;
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #3b82f6;
+        }
+
+        /* Pixelated borders & glow effect */
+        .glow-green {
+          box-shadow: 0 0 15px rgba(34, 197, 94, 0.25);
+        }
+        .glow-gold {
+          box-shadow: 0 0 15px rgba(234, 179, 8, 0.25);
+        }
+        .glow-accent {
+          box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+        }
+        .btn-press:active {
+          transform: translateY(2px);
+        }
+    </style>
+</head>
+<body class="bg-mc-bg text-gray-200 font-sans min-h-screen selection:bg-mc-green selection:text-black pb-12">
+
+<!-- Header / Navigation Bar -->
+<header class="sticky top-0 z-50 bg-mc-panel/90 backdrop-blur-md border-b border-mc-border px-4 py-3">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-mc-green to-emerald-700 flex items-center justify-center shadow-lg font-pixel font-bold text-black text-xl">
+                MC
+            </div>
+            <div>
+                <h1 class="font-pixel text-lg md:text-xl font-bold tracking-wider text-white">MCTIERS</h1>
+                <p class="text-xs text-gray-400">Player Card & Tier System Calculator</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="flex items-center gap-2">
+            <button id="btnExport" class="btn-press bg-mc-card hover:bg-mc-border border border-mc-border text-xs text-gray-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4 text-mc-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                <span class="hidden sm:inline">Export Profile</span>
+            </button>
+            <button id="btnImport" class="btn-press bg-mc-card hover:bg-mc-border border border-mc-border text-xs text-gray-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4 text-mc-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                <span class="hidden sm:inline">Import</span>
+            </button>
+            <button id="btnReset" class="btn-press bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs px-3 py-2 rounded-lg transition">
+                Reset
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Notification Toast -->
+<div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-mc-card border border-mc-accent text-white text-sm px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2">
+    <span id="toastIcon">✨</span>
+    <span id="toastMsg">Notification message</span>
+</div>
+
+<main class="max-w-6xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Profile Stats & Unlocks (Sticky on desktop) -->
+    <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-20 h-fit">
+
+        <!-- Player Card Header -->
+        <div class="bg-mc-panel border border-mc-border rounded-2xl p-5 relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-36 h-36 bg-mc-green/10 rounded-full blur-2xl pointer-events-none"></div>
+
+            <!-- Player Name Input -->
+            <div class="mb-4">
+                <label class="text-xs uppercase tracking-wider text-gray-400 font-semibold block mb-1">Player Tag</label>
+                <input type="text" id="playerName" value="Steve_PvP" class="bg-mc-bg border border-mc-border rounded-lg px-3 py-2 w-full text-white font-pixel focus:outline-none focus:border-mc-green transition" placeholder="Enter username...">
+            </div>
+
+            <!-- Total Points Badge -->
+            <div class="bg-mc-bg/70 border border-mc-border rounded-xl p-4 mb-4 text-center">
+                <p class="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-1">Total Score</p>
+                <div class="flex items-baseline justify-center gap-2">
+                    <span id="totalPoints" class="font-pixel text-4xl sm:text-5xl font-bold text-mc-green">0</span>
+                    <span class="text-sm text-gray-400">PTS</span>
+                </div>
+            </div>
+
+            <!-- Title & Rank Status -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-mc-card border border-mc-border rounded-xl p-3 text-center">
+                    <span class="text-xs text-gray-400 block mb-1">Title</span>
+                    <span id="titleBadge" class="font-pixel text-sm text-mc-gold font-bold block truncate">Rookie</span>
+                </div>
+                <div class="bg-mc-card border border-mc-border rounded-xl p-3 text-center">
+                    <span class="text-xs text-gray-400 block mb-1">Rank Status</span>
+                    <span id="rankBadge" class="font-pixel text-sm text-mc-purple font-bold block truncate">No rank</span>
+                </div>
+            </div>
+
+            <!-- Progress to Next Title Bar -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs text-gray-400">
+                    <span>Progress to <strong id="nextTitleName" class="text-white">Soldier</strong></span>
+                    <span id="progressText">0 / 30 pts</span>
+                </div>
+                <div class="w-full h-3 bg-mc-bg border border-mc-border rounded-full overflow-hidden p-0.5">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-mc-green to-emerald-400 rounded-full transition-all duration-500 w-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Perks Unlocked Module -->
+        <div class="bg-mc-panel border border-mc-border rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-pixel text-sm font-bold text-white flex items-center gap-2">
+                    <span>🎁</span> Unlocked Perks
+                </h2>
+                <span id="perksCount" class="text-xs bg-mc-card text-gray-300 px-2 py-0.5 rounded-md border border-mc-border">0/7</span>
+            </div>
+
+            <ul id="perksList" class="space-y-2 text-xs sm:text-sm max-h-60 overflow-y-auto pr-1">
+                <!-- Populated by JS -->
+            </ul>
+
+            <div class="mt-4 pt-3 border-t border-mc-border/60 text-[11px] text-gray-400 flex flex-col gap-1">
+                <div class="font-semibold text-gray-300">Rank Criteria:</div>
+                <div>• 1 HT2+ = <span class="text-gray-200">Elite</span> | 2 HT2+ = <span class="text-gray-200">Elite+</span></div>
+                <div>• 1 HT1 = <span class="text-gray-200">MVP+</span> | 2 HT1 = <span class="text-gray-200">VIP</span> | 4 HT1 = <span class="text-gray-200">VIP+</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Modes & Tier Controls -->
+    <div class="lg:col-span-7 space-y-4">
+
+        <!-- Filter Bar -->
+        <div class="bg-mc-panel border border-mc-border rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3">
+            <div id="categoryFilters" class="flex flex-wrap gap-1.5 text-xs">
+                <button data-cat="all" class="cat-btn bg-mc-accent text-white px-3 py-1.5 rounded-lg font-medium transition">All</button>
+                <button data-cat="melee" class="cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition">Melee</button>
+                <button data-cat="ranged" class="cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition">Ranged</button>
+                <button data-cat="special" class="cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition">Vehicles / Misc</button>
+            </div>
+
+            <div class="text-xs text-gray-400">
+                Showing <span id="modeCount" class="text-white font-bold">13</span> modes
+            </div>
+        </div>
+
+        <!-- Game Modes Grid -->
+        <div id="modesContainer" class="space-y-3">
+            <!-- Rendered by JS -->
+        </div>
+
+    </div>
+
+</main>
+
+<script>
+    // --- DATA CONFIGURATION ---
+    const MODES = [
+      { name: "Sword", cat: "melee", icon: "⚔️" },
+      { name: "Axe", cat: "melee", icon: "🪓" },
+      { name: "Pot", cat: "melee", icon: "🧪" },
+      { name: "UHC", cat: "melee", icon: "🍎" },
+      { name: "NethOP", cat: "melee", icon: "🔥" },
+      { name: "SMP", cat: "melee", icon: "🛡️" },
+      { name: "Mace", cat: "melee", icon: "🔨" },
+      { name: "Vanilla", cat: "melee", icon: "📦" },
+      { name: "Spear Mace", cat: "melee", icon: "🔱" },
+      { name: "XbowCart", cat: "special", icon: "🏹" },
+      { name: "Cart", cat: "special", icon: "🛒" },
+      { name: "Creeper", cat: "special", icon: "💥" },
+      { name: "Bow", cat: "ranged", icon: "🎯" }
+    ];
+
+    // Points Mapping: Tier -> [LowPoints, HighPoints]
+    const PTS_MAP = {
+      1: [45, 60],
+      2: [20, 30],
+      3: [6, 10],
+      4: [3, 4],
+      5: [1, 2]
+    };
+
+    const TITLES = [
+      { name: "Rookie", min: 0 },
+      { name: "Soldier", min: 30 },
+      { name: "Knight", min: 80 },
+      { name: "Fighter", min: 150 },
+      { name: "Warrior", min: 250 },
+      { name: "Master", min: 400 },
+      { name: "Grand Master", min: 600 }
+    ];
+
+    const RANKS = ["No rank", "Elite", "Elite+", "MVP+", "VIP", "VIP+"];
+
+    const PERKS_DATA = [
+      { needRank: 1, text: "Rank tag in chat" },
+      { needRank: 2, text: "Access to customize armor trim and shield" },
+      { needRank: 3, text: "Access to Fly command" },
+      { needRank: 4, text: "Elytra and fireworks in lobby" },
+      { needRank: 5, text: "Can be a tier tester for other users" },
+      { needRank: 5, text: "Spear with lunge 3" },
+      { needRank: 5, text: "Wind charges" }
+    ];
+
+    // --- STATE MANAGEMENT ---
+    let state = {
+      playerName: "Steve_PvP",
+      modesState: MODES.map(() => ({ tier: 0, high: true }))
+    };
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+      loadState();
+      renderModesList();
+      bindEvents();
+      calculateAndRender();
+    };
+
+    // --- STORAGE HANDLERS ---
+    function saveState() {
+      try {
+        localStorage.setItem('mc_tier_system_data', JSON.stringify(state));
+      } catch (e) {
+        console.error("Could not save to localStorage", e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('mc_tier_system_data');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.modesState && parsed.modesState.length === MODES.length) {
+            state = parsed;
+          }
+        }
+      } catch (e) {
+        console.error("Could not load from localStorage", e);
+      }
+      document.getElementById('playerName').value = state.playerName || "Steve_PvP";
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function renderModesList() {
+      const container = document.getElementById('modesContainer');
+      container.innerHTML = MODES.map((mode, i) => {
+        return `
+          <div class="mode-card bg-mc-panel border border-mc-border hover:border-gray-600 rounded-xl p-3 sm:p-4 transition space-y-3" data-cat="${mode.cat}" data-index="${i}">
+            <!-- Top Row: Icon, Title & Points -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2.5">
+                <span class="text-xl sm:text-2xl">${mode.icon}</span>
+                <div>
+                  <h3 class="font-bold text-white text-sm sm:text-base">${mode.name}</h3>
+                  <span class="text-[11px] text-gray-400 capitalize">${mode.cat}</span>
+                </div>
+              </div>
+
+              <!-- Points display for mode -->
+              <div class="text-right">
+                <span class="mode-pts font-pixel text-mc-green font-bold text-base sm:text-lg">0</span>
+                <span class="text-xs text-gray-400"> pts</span>
+              </div>
+            </div>
+
+            <!-- Bottom Row: Tier Buttons + HT/LT Toggle -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-mc-border/40">
+              <!-- Tier Selector (0 to 5) -->
+              <div class="flex items-center gap-1">
+                <button type="button" data-tier="0" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">0</button>
+                <button type="button" data-tier="1" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T1</button>
+                <button type="button" data-tier="2" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T2</button>
+                <button type="button" data-tier="3" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T3</button>
+                <button type="button" data-tier="4" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T4</button>
+                <button type="button" data-tier="5" class="tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">T5</button>
+              </div>
+
+              <!-- HT / LT Toggle -->
+              <div class="flex items-center bg-mc-bg p-0.5 rounded-lg border border-mc-border">
+                <button type="button" data-high="true" class="ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400">HT</button>
+                <button type="button" data-high="false" class="lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400">LT</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function calculatePoints(tier, isHigh) {
+      if (!tier || tier === 0) return 0;
+      return PTS_MAP[tier][isHigh ? 1 : 0];
+    }
+
+    function calculateAndRender() {
+      let totalPoints = 0;
+      let ht1Count = 0;
+      let ht2OrBetterCount = 0;
+
+      // Update Mode Cards UI & Sum Total
+      const cards = document.querySelectorAll('.mode-card');
+      cards.forEach(card => {
+        const idx = parseInt(card.dataset.index);
+        const mState = state.modesState[idx];
+        const pts = calculatePoints(mState.tier, mState.high);
+        totalPoints += pts;
+
+        // Count HT placements for Rank Level calculation
+        if (mState.high && mState.tier >= 1 && mState.tier <= 2) {
+          ht2OrBetterCount++;
+          if (mState.tier === 1) ht1Count++;
+        }
+
+        // Render Card state
+        card.querySelector('.mode-pts').textContent = pts;
+
+        // Tier buttons active styling
+        card.querySelectorAll('.tier-btn').forEach(btn => {
+          const t = parseInt(btn.dataset.tier);
+          if (t === mState.tier) {
+            btn.className = "tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-accent text-white border border-blue-400 shadow-sm";
+          } else {
+            btn.className = "tier-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition";
+          }
+        });
+
+        // HT/LT toggle buttons styling
+        const htBtn = card.querySelector('.ht-btn');
+        const ltBtn = card.querySelector('.lt-btn');
+
+        if (mState.tier === 0) {
+          htBtn.disabled = true;
+          ltBtn.disabled = true;
+          htBtn.className = "ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-600 cursor-not-allowed";
+          ltBtn.className = "lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-600 cursor-not-allowed";
+        } else {
+          htBtn.disabled = false;
+          ltBtn.disabled = false;
+          if (mState.high) {
+            htBtn.className = "ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition bg-mc-green text-black font-pixel shadow-sm";
+            ltBtn.className = "lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400 hover:text-white";
+          } else {
+            htBtn.className = "ht-btn text-xs font-bold px-2.5 py-1 rounded-md transition text-gray-400 hover:text-white";
+            ltBtn.className = "lt-btn text-xs font-bold px-2.5 py-1 rounded-md transition bg-mc-gold text-black font-pixel shadow-sm";
+          }
+        }
+      });
+
+      // Render Total Points
+      document.getElementById('totalPoints').textContent = totalPoints;
+
+      // Determine Title & Progress
+      let currentTitle = TITLES[0].name;
+      let nextTitle = TITLES[1];
+      let prevMin = 0;
+
+      for (let i = 0; i < TITLES.length; i++) {
+        if (totalPoints >= TITLES[i].min) {
+          currentTitle = TITLES[i].name;
+          prevMin = TITLES[i].min;
+          nextTitle = TITLES[i + 1] || null;
+        }
+      }
+
+      document.getElementById('titleBadge').textContent = currentTitle;
+
+      // Progress bar calculation
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const nextTitleName = document.getElementById('nextTitleName');
+
+      if (nextTitle) {
+        nextTitleName.textContent = nextTitle.name;
+        const range = nextTitle.min - prevMin;
+        const currentProgress = Math.min(totalPoints - prevMin, range);
+        const percent = Math.min(Math.max((currentProgress / range) * 100, 0), 100);
+
+        progressBar.style.width = `${percent}%`;
+        progressText.textContent = `${totalPoints} / ${nextTitle.min} pts`;
+      } else {
+        nextTitleName.textContent = "MAX LEVEL";
+        progressBar.style.width = `100%`;
+        progressText.textContent = `${totalPoints} pts (Max Title)`;
+      }
+
+      // Determine Rank Level
+      let rankLevel = 0;
+      if (ht1Count >= 4) rankLevel = 5;
+      else if (ht1Count >= 2) rankLevel = 4;
+      else if (ht1Count >= 1) rankLevel = 3;
+      else if (ht2OrBetterCount >= 2) rankLevel = 2;
+      else if (ht2OrBetterCount >= 1) rankLevel = 1;
+
+      document.getElementById('rankBadge').textContent = RANKS[rankLevel];
+
+      // Render Perks List
+      const perksList = document.getElementById('perksList');
+      let unlockedCount = 0;
+
+      perksList.innerHTML = PERKS_DATA.map(perk => {
+        const isUnlocked = rankLevel >= perk.needRank;
+        if (isUnlocked) unlockedCount++;
+
+        return `
+          <li class="flex items-center gap-2 p-2 rounded-lg ${isUnlocked ? 'bg-mc-green/10 border border-mc-green/30 text-gray-100' : 'bg-mc-bg/40 border border-mc-border/40 text-gray-500'}">
+            <span class="text-xs font-bold ${isUnlocked ? 'text-mc-green' : 'text-gray-600'}">
+              ${isUnlocked ? '✓' : '🔒'}
+            </span>
+            <span class="flex-1">${perk.text}</span>
+            <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded ${isUnlocked ? 'bg-mc-green/20 text-mc-green' : 'bg-mc-border/30 text-gray-500'}">
+              ${RANKS[perk.needRank]}
+            </span>
+          </li>
+        `;
+      }).join('');
+
+      document.getElementById('perksCount').textContent = `${unlockedCount}/${PERKS_DATA.length}`;
+
+      // Save state to localStorage
+      saveState();
+    }
+
+    // --- EVENT BINDINGS ---
+    function bindEvents() {
+      // Player name input
+      document.getElementById('playerName').addEventListener('input', (e) => {
+        state.playerName = e.target.value;
+        saveState();
+      });
+
+      // Modes container delegate click for Tiers and HT/LT buttons
+      document.getElementById('modesContainer').addEventListener('click', (e) => {
+        const card = e.target.closest('.mode-card');
+        if (!card) return;
+        const idx = parseInt(card.dataset.index);
+
+        // Tier click
+        const tierBtn = e.target.closest('.tier-btn');
+        if (tierBtn) {
+          state.modesState[idx].tier = parseInt(tierBtn.dataset.tier);
+          calculateAndRender();
+          return;
+        }
+
+        // HT / LT click
+        const htBtn = e.target.closest('.ht-btn');
+        if (htBtn && !htBtn.disabled) {
+          state.modesState[idx].high = true;
+          calculateAndRender();
+          return;
+        }
+
+        const ltBtn = e.target.closest('.lt-btn');
+        if (ltBtn && !ltBtn.disabled) {
+          state.modesState[idx].high = false;
+          calculateAndRender();
+          return;
+        }
+      });
+
+      // Category Filters
+      document.getElementById('categoryFilters').addEventListener('click', (e) => {
+        const btn = e.target.closest('.cat-btn');
+        if (!btn) return;
+
+        const cat = btn.dataset.cat;
+
+        // Active button styling
+        document.querySelectorAll('.cat-btn').forEach(b => {
+          b.className = "cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition";
+        });
+        btn.className = "cat-btn bg-mc-accent text-white px-3 py-1.5 rounded-lg font-medium transition";
+
+        // Filter cards
+        let count = 0;
+        document.querySelectorAll('.mode-card').forEach(card => {
+          if (cat === 'all' || card.dataset.cat === cat) {
+            card.style.display = 'block';
+            count++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+        document.getElementById('modeCount').textContent = count;
+      });
+
+      // Export profile JSON
+      document.getElementById('btnExport').addEventListener('click', () => {
+        const jsonStr = JSON.stringify(state, null, 2);
+        const el = document.createElement('textarea');
+        el.value = jsonStr;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast("✨ Profile copied to clipboard!");
+      });
+
+      // Import profile JSON
+      document.getElementById('btnImport').addEventListener('click', () => {
+        const input = prompt("Paste your profile JSON configuration here:");
+        if (input) {
+          try {
+            const parsed = JSON.parse(input);
+            if (parsed.modesState && parsed.modesState.length === MODES.length) {
+              state = parsed;
+              document.getElementById('playerName').value = state.playerName || "Steve_PvP";
+              calculateAndRender();
+              showToast("🚀 Profile imported successfully!");
+            } else {
+              showToast("❌ Invalid JSON format.");
+            }
+          } catch (e) {
+            showToast("❌ Error parsing JSON input.");
+          }
+        }
+      });
+
+      // Reset button
+      document.getElementById('btnReset').addEventListener('click', () => {
+        if (confirm("Reset all mode tiers back to 0?")) {
+          state.modesState = MODES.map(() => ({ tier: 0, high: true }));
+          calculateAndRender();
+          showToast("🔄 Reset complete!");
+        }
+      });
+    }
+
+    // --- TOAST HELPER ---
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+</script>
+</body>
+</html>
