@@ -89,14 +89,6 @@
 
         <!-- Quick Actions -->
         <div class="flex items-center gap-2">
-            <button id="btnExport" class="btn-press bg-mc-card hover:bg-mc-border border border-mc-border text-xs text-gray-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
-                <svg class="w-4 h-4 text-mc-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <span class="hidden sm:inline">Export Profile</span>
-            </button>
-            <button id="btnImport" class="btn-press bg-mc-card hover:bg-mc-border border border-mc-border text-xs text-gray-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
-                <svg class="w-4 h-4 text-mc-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                <span class="hidden sm:inline">Import</span>
-            </button>
             <button id="btnReset" class="btn-press bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs px-3 py-2 rounded-lg transition">
                 Reset
             </button>
@@ -106,7 +98,6 @@
 
 <!-- Notification Toast -->
 <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-mc-card border border-mc-accent text-white text-sm px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2">
-    <span id="toastIcon">✨</span>
     <span id="toastMsg">Notification message</span>
 </div>
 
@@ -162,7 +153,7 @@
         <div class="bg-mc-panel border border-mc-border rounded-2xl p-5">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="font-pixel text-sm font-bold text-white flex items-center gap-2">
-                    <span>🎁</span> Unlocked Perks
+                    Unlocked Perks
                 </h2>
                 <span id="perksCount" class="text-xs bg-mc-card text-gray-300 px-2 py-0.5 rounded-md border border-mc-border">0/7</span>
             </div>
@@ -189,7 +180,7 @@
                 <button data-cat="all" class="cat-btn bg-mc-accent text-white px-3 py-1.5 rounded-lg font-medium transition">All</button>
                 <button data-cat="melee" class="cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition">Melee</button>
                 <button data-cat="ranged" class="cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition">Ranged</button>
-                <button data-cat="special" class="cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition">Vehicles / Misc</button>
+                <button data-cat="explosive" class="cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition">Explosive / Misc</button>
             </div>
 
             <div class="text-xs text-gray-400">
@@ -209,19 +200,19 @@
 <script>
     // --- DATA CONFIGURATION ---
     const MODES = [
-      { name: "Sword", cat: "melee", icon: "⚔️" },
-      { name: "Axe", cat: "melee", icon: "🪓" },
-      { name: "Pot", cat: "melee", icon: "🧪" },
-      { name: "UHC", cat: "melee", icon: "🍎" },
-      { name: "NethOP", cat: "melee", icon: "🔥" },
-      { name: "SMP", cat: "melee", icon: "🛡️" },
-      { name: "Mace", cat: "melee", icon: "🔨" },
-      { name: "Vanilla", cat: "melee", icon: "📦" },
-      { name: "Spear Mace", cat: "melee", icon: "🔱" },
-      { name: "XbowCart", cat: "special", icon: "🏹" },
-      { name: "Cart", cat: "special", icon: "🛒" },
-      { name: "Creeper", cat: "special", icon: "💥" },
-      { name: "Bow", cat: "ranged", icon: "🎯" }
+      { name: "Sword", cat: "melee" },
+      { name: "Axe", cat: "melee" },
+      { name: "Pot", cat: "melee" },
+      { name: "UHC", cat: "melee" },
+      { name: "NethOP", cat: "melee" },
+      { name: "SMP", cat: "melee" },
+      { name: "Mace", cat: "melee" },
+      { name: "Spear Mace", cat: "melee" },
+      { name: "Vanilla", cat: "explosive" },
+      { name: "XbowCart", cat: "explosive" },
+      { name: "Cart", cat: "explosive" },
+      { name: "Creeper", cat: "explosive" },
+      { name: "Bow", cat: "ranged" }
     ];
 
     // Points Mapping: Tier -> [LowPoints, HighPoints]
@@ -299,14 +290,11 @@
       container.innerHTML = MODES.map((mode, i) => {
         return `
           <div class="mode-card bg-mc-panel border border-mc-border hover:border-gray-600 rounded-xl p-3 sm:p-4 transition space-y-3" data-cat="${mode.cat}" data-index="${i}">
-            <!-- Top Row: Icon, Title & Points -->
+            <!-- Top Row: Title & Points -->
             <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2.5">
-                <span class="text-xl sm:text-2xl">${mode.icon}</span>
-                <div>
-                  <h3 class="font-bold text-white text-sm sm:text-base">${mode.name}</h3>
-                  <span class="text-[11px] text-gray-400 capitalize">${mode.cat}</span>
-                </div>
+              <div>
+                <h3 class="font-bold text-white text-sm sm:text-base">${mode.name}</h3>
+                <span class="text-[11px] text-gray-400 capitalize">${mode.cat}</span>
               </div>
 
               <!-- Points display for mode -->
@@ -456,7 +444,7 @@
         return `
           <li class="flex items-center gap-2 p-2 rounded-lg ${isUnlocked ? 'bg-mc-green/10 border border-mc-green/30 text-gray-100' : 'bg-mc-bg/40 border border-mc-border/40 text-gray-500'}">
             <span class="text-xs font-bold ${isUnlocked ? 'text-mc-green' : 'text-gray-600'}">
-              ${isUnlocked ? '✓' : '🔒'}
+              ${isUnlocked ? '[X]' : '[ ]'}
             </span>
             <span class="flex-1">${perk.text}</span>
             <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded ${isUnlocked ? 'bg-mc-green/20 text-mc-green' : 'bg-mc-border/30 text-gray-500'}">
@@ -536,44 +524,12 @@
         document.getElementById('modeCount').textContent = count;
       });
 
-      // Export profile JSON
-      document.getElementById('btnExport').addEventListener('click', () => {
-        const jsonStr = JSON.stringify(state, null, 2);
-        const el = document.createElement('textarea');
-        el.value = jsonStr;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-        showToast("✨ Profile copied to clipboard!");
-      });
-
-      // Import profile JSON
-      document.getElementById('btnImport').addEventListener('click', () => {
-        const input = prompt("Paste your profile JSON configuration here:");
-        if (input) {
-          try {
-            const parsed = JSON.parse(input);
-            if (parsed.modesState && parsed.modesState.length === MODES.length) {
-              state = parsed;
-              document.getElementById('playerName').value = state.playerName || "Steve_PvP";
-              calculateAndRender();
-              showToast("🚀 Profile imported successfully!");
-            } else {
-              showToast("❌ Invalid JSON format.");
-            }
-          } catch (e) {
-            showToast("❌ Error parsing JSON input.");
-          }
-        }
-      });
-
       // Reset button
       document.getElementById('btnReset').addEventListener('click', () => {
         if (confirm("Reset all mode tiers back to 0?")) {
           state.modesState = MODES.map(() => ({ tier: 0, high: true }));
           calculateAndRender();
-          showToast("🔄 Reset complete!");
+          showToast("Reset complete!");
         }
       });
     }
