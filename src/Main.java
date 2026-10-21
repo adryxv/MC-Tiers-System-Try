@@ -1,32 +1,61 @@
 import java.util.ArrayList;
 import java.util.List;
 
-record ModeResult(String mode, int tier, boolean isHigh, int points) {}
+record ModeResult(String mode, int tier, boolean isHigh, int points, String urlKey) {}
 
 void main() {
-    // Points System and ranks MCtiers
-
-    IO.print("Introduce tu tag de jugador: ");
+    // 1. Prompt for Player Tag
+    IO.print("Enter your player tag: ");
     String playerName = IO.readln();
     if (playerName == null || playerName.isBlank()) {
         playerName = "Steve_PvP";
     }
 
-    String[] modes = {
-            "Sword", "Axe", "Pot", "UHC", "NethOP", "SMP", "Mace",
-            "Spear Mace", "Vanilla", "XbowCart", "Cart", "Creeper", "Bow"
+    // Definition of the 13 game modes and their reference keys on mcpvp.com
+    record ModeInfo(String name, String urlKey) {}
+
+    ModeInfo[] modeConfigs = {
+            new ModeInfo("Sword", "sword"),
+            new ModeInfo("Axe", "shield"),
+            new ModeInfo("Pot", "pot"),
+            new ModeInfo("UHC", "uhc"),
+            new ModeInfo("NethOP", "late-game"),
+            new ModeInfo("SMP", "smp"),
+            new ModeInfo("Mace", "mace"),
+            new ModeInfo("Spear Mace", "spear"),
+            new ModeInfo("Vanilla", "end-game"),
+            new ModeInfo("XbowCart", "cart"),
+            new ModeInfo("Cart", "cart"),
+            new ModeInfo("Creeper", "creeper"),
+            new ModeInfo("Bow", "bow")
     };
 
     List<ModeResult> results = new ArrayList<>();
     int totalPoints = 0;
 
-    for (String mode : modes) {
-        ModeResult result = askMode(mode);
+    for (ModeInfo config : modeConfigs) {
+        ModeResult result = askMode(config.name(), config.urlKey());
         results.add(result);
         totalPoints += result.points();
     }
 
-    IO.println("\n--- Resumen de Tier List: " + playerName + " ---");
+    // 2. Ask for main mode to show leaderboard simulation & reference link
+    IO.print("\nWhat is your main mode?: ");
+    String mainModeInput = IO.readln();
+    ModeResult mainModeResult = null;
+
+    if (mainModeInput != null) {
+        String query = mainModeInput.trim().toLowerCase();
+        for (ModeResult r : results) {
+            if (r.mode().toLowerCase().equals(query) || r.urlKey().toLowerCase().equals(query)) {
+                mainModeResult = r;
+                break;
+            }
+        }
+    }
+
+    // --- SUMMARY ---
+    IO.println("\n--- Tier List Summary: " + playerName + " ---");
     for (ModeResult r : results) {
         if (r.tier() == 0) {
             IO.println(r.mode() + ": no tier");
@@ -42,7 +71,18 @@ void main() {
     IO.println("Title: " + getTitle(totalPoints));
     IO.println("Rank: " + getRankName(rankLevel));
 
-    IO.println("Perks:");
+    // 3. Display estimated leaderboard position & official reference URL
+    if (mainModeResult != null && mainModeResult.tier() > 0) {
+        String referenceUrl = "https://www.mcpvp.com/tiers/" + mainModeResult.urlKey();
+        IO.println("\n[Global Leaderboard Simulation]");
+        IO.println("Main mode: " + mainModeResult.mode() + " (" + (mainModeResult.isHigh() ? "HT" : "LT") + mainModeResult.tier() + ")");
+        IO.println("Estimated rank position: " + getWebLeaderboardPosition(mainModeResult));
+        IO.println("Official reference: " + referenceUrl);
+    } else {
+        IO.println("\n[Leaderboard]: No valid main mode with a tier was specified.");
+    }
+
+    IO.println("\nPerks:");
     List<String> perks = getPerks(rankLevel);
     if (perks.isEmpty()) {
         IO.println("  (none)");
@@ -53,32 +93,22 @@ void main() {
 }
 
 String getTitle(int totalPoints) {
-    if (totalPoints >= 600) {
-        return "Grand Master";
-    } else if (totalPoints >= 400) {
-        return "Master";
-    } else if (totalPoints >= 250) {
-        return "Warrior";
-    } else if (totalPoints >= 150) {
-        return "Fighter";
-    } else if (totalPoints >= 80) {
-        return "Knight";
-    } else if (totalPoints >= 30) {
-        return "Soldier";
-    } else {
-        return "Rookie";
-    }
+    if (totalPoints >= 600) return "Grand Master";
+    if (totalPoints >= 400) return "Master";
+    if (totalPoints >= 250) return "Warrior";
+    if (totalPoints >= 150) return "Fighter";
+    if (totalPoints >= 80) return "Knight";
+    if (totalPoints >= 30) return "Soldier";
+    return "Rookie";
 }
 
-ModeResult askMode(String mode) {
+ModeResult askMode(String modeName, String urlKey) {
     int tier = -1;
 
     while (tier < 0 || tier > 5) {
-        IO.print(mode + " tier (1-5, 0 = no tier): ");
+        IO.print(modeName + " tier (1-5, 0 = no tier): ");
         String input = IO.readln();
-        if (input == null) {
-            return new ModeResult(mode, 0, false, 0);
-        }
+        if (input == null) return new ModeResult(modeName, 0, false, 0, urlKey);
 
         try {
             tier = Integer.parseInt(input.trim());
@@ -91,9 +121,7 @@ ModeResult askMode(String mode) {
         }
     }
 
-    if (tier == 0) {
-        return new ModeResult(mode, 0, false, 0);
-    }
+    if (tier == 0) return new ModeResult(modeName, 0, false, 0, urlKey);
 
     String level = "";
     while (!level.equals("h") && !level.equals("l")) {
@@ -104,7 +132,7 @@ ModeResult askMode(String mode) {
     }
     boolean isHigh = level.equals("h");
 
-    return new ModeResult(mode, tier, isHigh, getTierPoints(tier, isHigh));
+    return new ModeResult(modeName, tier, isHigh, getTierPoints(tier, isHigh), urlKey);
 }
 
 int getTierPoints(int tier, boolean isHigh) {
@@ -118,6 +146,23 @@ int getTierPoints(int tier, boolean isHigh) {
     };
 }
 
+String getWebLeaderboardPosition(ModeResult r) {
+    int tier = r.tier();
+    boolean isHigh = r.isHigh();
+
+    if (tier == 1) {
+        return isHigh ? "Top 1 - 10 worldwide (Elite Global Tier)" : "Top 11 - 25 worldwide";
+    } else if (tier == 2) {
+        return isHigh ? "Top 26 - 60 worldwide" : "Top 61 - 120 worldwide";
+    } else if (tier == 3) {
+        return isHigh ? "Top 121 - 300 worldwide" : "Top 301 - 600 worldwide";
+    } else if (tier == 4) {
+        return isHigh ? "Top 601 - 1200 worldwide" : "Top 1201 - 2000 worldwide";
+    } else {
+        return "Beginner Tier / Regional Competitive";
+    }
+}
+
 int getRankLevel(List<ModeResult> results) {
     int ht1 = 0;
     int ht2OrBetter = 0;
@@ -125,25 +170,16 @@ int getRankLevel(List<ModeResult> results) {
     for (ModeResult r : results) {
         if (r.isHigh() && r.tier() >= 1 && r.tier() <= 2) {
             ht2OrBetter++;
-            if (r.tier() == 1) {
-                ht1++;
-            }
+            if (r.tier() == 1) ht1++;
         }
     }
 
-    if (ht1 >= 4) {
-        return 5;
-    } else if (ht1 >= 2) {
-        return 4;
-    } else if (ht1 >= 1) {
-        return 3;
-    } else if (ht2OrBetter >= 2) {
-        return 2;
-    } else if (ht2OrBetter >= 1) {
-        return 1;
-    } else {
-        return 0;
-    }
+    if (ht1 >= 4) return 5;
+    if (ht1 >= 2) return 4;
+    if (ht1 >= 1) return 3;
+    if (ht2OrBetter >= 2) return 2;
+    if (ht2OrBetter >= 1) return 1;
+    return 0;
 }
 
 String getRankName(int rankLevel) {
@@ -159,24 +195,14 @@ String getRankName(int rankLevel) {
 
 List<String> getPerks(int rankLevel) {
     List<String> perks = new ArrayList<>();
-
-    if (rankLevel >= 1) {
-        perks.add("Rank tag in chat");
-    }
-    if (rankLevel >= 2) {
-        perks.add("Access to customize armor trim and shield");
-    }
-    if (rankLevel >= 3) {
-        perks.add("Access to Fly command");
-    }
-    if (rankLevel >= 4) {
-        perks.add("Elytra and fireworks in lobby");
-    }
+    if (rankLevel >= 1) perks.add("Rank tag in chat");
+    if (rankLevel >= 2) perks.add("Access to customize armor trim and shield");
+    if (rankLevel >= 3) perks.add("Access to Fly command");
+    if (rankLevel >= 4) perks.add("Elytra and fireworks in lobby");
     if (rankLevel >= 5) {
         perks.add("Can be a tier tester for other users");
         perks.add("Spear with lunge 3");
         perks.add("Wind charges");
     }
-
     return perks;
 }
