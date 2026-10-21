@@ -57,15 +57,9 @@
           background: #3b82f6;
         }
 
-        /* Pixelated borders & glow effect */
+        /* Glow effect */
         .glow-green {
           box-shadow: 0 0 15px rgba(34, 197, 94, 0.25);
-        }
-        .glow-gold {
-          box-shadow: 0 0 15px rgba(234, 179, 8, 0.25);
-        }
-        .glow-accent {
-          box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
         }
         .btn-press:active {
           transform: translateY(2px);
@@ -103,7 +97,7 @@
 
 <main class="max-w-6xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-    <!-- LEFT COLUMN: Profile Stats & Unlocks (Sticky on desktop) -->
+    <!-- LEFT COLUMN: Profile Stats & Leaderboard -->
     <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-20 h-fit">
 
         <!-- Player Card Header -->
@@ -113,7 +107,24 @@
             <!-- Player Name Input -->
             <div class="mb-4">
                 <label class="text-xs uppercase tracking-wider text-gray-400 font-semibold block mb-1">Player Tag</label>
-                <input type="text" id="playerName" value="" class="bg-mc-bg border border-mc-border rounded-lg px-3 py-2 w-full text-white font-pixel focus:outline-none focus:border-mc-green transition" placeholder="Enter username...">
+                <input type="text" id="playerName" value="" class="bg-mc-bg border border-mc-border rounded-lg px-3 py-2 w-full text-white font-pixel focus:outline-none focus:border-mc-green transition text-sm" placeholder="Enter username...">
+            </div>
+
+            <!-- Main Mode Selector & Leaderboard Info -->
+            <div class="mb-4 space-y-2">
+                <label class="text-xs uppercase tracking-wider text-gray-400 font-semibold block">Main Mode</label>
+                <select id="mainModeSelect" class="bg-mc-bg border border-mc-border rounded-lg px-3 py-2 w-full text-white font-pixel text-xs focus:outline-none focus:border-mc-green transition">
+                    <!-- Populated by JS -->
+                </select>
+
+                <!-- Leaderboard Output -->
+                <div id="leaderboardCard" class="bg-mc-card/60 border border-mc-border/60 rounded-lg p-3 text-xs hidden space-y-1">
+                    <div class="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">MCPVP Leaderboard Simulation</div>
+                    <div id="leaderboardPos" class="text-mc-green font-bold text-xs">Top 1 - 10 worldwide</div>
+                    <a id="leaderboardLink" href="#" target="_blank" rel="noopener noreferrer" class="text-[11px] text-mc-accent hover:underline block truncate">
+                        https://www.mcpvp.com/tiers/sword
+                    </a>
+                </div>
             </div>
 
             <!-- Total Points Badge -->
@@ -200,22 +211,21 @@
 <script>
     // --- DATA CONFIGURATION ---
     const MODES = [
-      { name: "Sword", cat: "melee" },
-      { name: "Axe", cat: "melee" },
-      { name: "Pot", cat: "melee" },
-      { name: "UHC", cat: "melee" },
-      { name: "NethOP", cat: "melee" },
-      { name: "SMP", cat: "melee" },
-      { name: "Mace", cat: "melee" },
-      { name: "Spear Mace", cat: "melee" },
-      { name: "Vanilla", cat: "explosive" },
-      { name: "XbowCart", cat: "explosive" },
-      { name: "Cart", cat: "explosive" },
-      { name: "Creeper", cat: "explosive" },
-      { name: "Bow", cat: "ranged" }
+      { name: "Sword", cat: "melee", urlKey: "sword" },
+      { name: "Axe", cat: "melee", urlKey: "shield" },
+      { name: "Pot", cat: "melee", urlKey: "pot" },
+      { name: "UHC", cat: "melee", urlKey: "uhc" },
+      { name: "NethOP", cat: "melee", urlKey: "late-game" },
+      { name: "SMP", cat: "melee", urlKey: "smp" },
+      { name: "Mace", cat: "melee", urlKey: "mace" },
+      { name: "Spear Mace", cat: "melee", urlKey: "spear" },
+      { name: "Vanilla", cat: "explosive", urlKey: "end-game" },
+      { name: "XbowCart", cat: "explosive", urlKey: "cart" },
+      { name: "Cart", cat: "explosive", urlKey: "cart" },
+      { name: "Creeper", cat: "explosive", urlKey: "creeper" },
+      { name: "Bow", cat: "ranged", urlKey: "bow" }
     ];
 
-    // Points Mapping: Tier -> [LowPoints, HighPoints]
     const PTS_MAP = {
       1: [45, 60],
       2: [20, 30],
@@ -249,12 +259,14 @@
     // --- STATE MANAGEMENT ---
     let state = {
       playerName: "",
+      mainMode: "Sword",
       modesState: MODES.map(() => ({ tier: 0, high: true }))
     };
 
     // --- INITIALIZATION ---
     window.onload = () => {
       loadState();
+      populateMainModeSelect();
       renderModesList();
       bindEvents();
       calculateAndRender();
@@ -282,6 +294,12 @@
         console.error("Could not load from localStorage", e);
       }
       document.getElementById('playerName').value = state.playerName || "";
+    }
+
+    function populateMainModeSelect() {
+      const select = document.getElementById('mainModeSelect');
+      select.innerHTML = MODES.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+      select.value = state.mainMode || MODES[0].name;
     }
 
     // --- RENDER FUNCTIONS ---
@@ -328,6 +346,14 @@
       return PTS_MAP[tier][isHigh ? 1 : 0];
     }
 
+    function getWebLeaderboardPosition(tier, isHigh) {
+      if (tier === 1) return isHigh ? "Top 1 - 10 worldwide (Elite Global Tier)" : "Top 11 - 25 worldwide";
+      if (tier === 2) return isHigh ? "Top 26 - 60 worldwide" : "Top 61 - 120 worldwide";
+      if (tier === 3) return isHigh ? "Top 121 - 300 worldwide" : "Top 301 - 600 worldwide";
+      if (tier === 4) return isHigh ? "Top 601 - 1200 worldwide" : "Top 1201 - 2000 worldwide";
+      return "Beginner Tier / Regional Competitive";
+    }
+
     function calculateAndRender() {
       let totalPoints = 0;
       let ht1Count = 0;
@@ -341,13 +367,11 @@
         const pts = calculatePoints(mState.tier, mState.high);
         totalPoints += pts;
 
-        // Count HT placements for Rank Level calculation
         if (mState.high && mState.tier >= 1 && mState.tier <= 2) {
           ht2OrBetterCount++;
           if (mState.tier === 1) ht1Count++;
         }
 
-        // Render Card state
         card.querySelector('.mode-pts').textContent = pts;
 
         // Linear buttons active styling
@@ -389,7 +413,6 @@
 
       document.getElementById('titleBadge').textContent = currentTitle;
 
-      // Progress bar calculation
       const progressBar = document.getElementById('progressBar');
       const progressText = document.getElementById('progressText');
       const nextTitleName = document.getElementById('nextTitleName');
@@ -441,6 +464,22 @@
 
       document.getElementById('perksCount').textContent = `${unlockedCount}/${PERKS_DATA.length}`;
 
+      // Render Leaderboard simulation
+      const mainIndex = MODES.findIndex(m => m.name === state.mainMode);
+      const mainState = state.modesState[mainIndex];
+      const lCard = document.getElementById('leaderboardCard');
+
+      if (mainState && mainState.tier > 0) {
+        lCard.classList.remove('hidden');
+        document.getElementById('leaderboardPos').textContent = getWebLeaderboardPosition(mainState.tier, mainState.high);
+        const link = document.getElementById('leaderboardLink');
+        const url = `https://www.mcpvp.com/tiers/${MODES[mainIndex].urlKey}`;
+        link.href = url;
+        link.textContent = url;
+      } else {
+        lCard.classList.add('hidden');
+      }
+
       // Save state to localStorage
       saveState();
     }
@@ -451,6 +490,12 @@
       document.getElementById('playerName').addEventListener('input', (e) => {
         state.playerName = e.target.value;
         saveState();
+      });
+
+      // Main mode select
+      document.getElementById('mainModeSelect').addEventListener('change', (e) => {
+        state.mainMode = e.target.value;
+        calculateAndRender();
       });
 
       // Modes container delegate click for linear tier buttons
@@ -475,13 +520,11 @@
 
         const cat = btn.dataset.cat;
 
-        // Active button styling
         document.querySelectorAll('.cat-btn').forEach(b => {
           b.className = "cat-btn bg-mc-card hover:bg-mc-border text-gray-300 px-3 py-1.5 rounded-lg font-medium transition";
         });
         btn.className = "cat-btn bg-mc-accent text-white px-3 py-1.5 rounded-lg font-medium transition";
 
-        // Filter cards
         let count = 0;
         document.querySelectorAll('.mode-card').forEach(card => {
           if (cat === 'all' || card.dataset.cat === cat) {
