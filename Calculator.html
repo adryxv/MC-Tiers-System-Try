@@ -149,13 +149,42 @@
             </div>
 
             <!-- Progress to Next Title Bar -->
-            <div class="space-y-1.5">
+            <div class="space-y-1.5 mb-4">
                 <div class="flex justify-between text-xs text-gray-400">
                     <span>Progress to <strong id="nextTitleName" class="text-white">Soldier</strong></span>
                     <span id="progressText">0 / 30 pts</span>
                 </div>
                 <div class="w-full h-3 bg-mc-bg border border-mc-border rounded-full overflow-hidden p-0.5">
                     <div id="progressBar" class="h-full bg-gradient-to-r from-mc-green to-emerald-400 rounded-full transition-all duration-500 w-0"></div>
+                </div>
+            </div>
+
+            <!-- Training Advice (Smart Recommendation) -->
+            <div id="trainingAdviceBox" class="bg-mc-card/80 border border-mc-gold/30 rounded-xl p-3 text-xs space-y-1.5">
+                <div class="flex items-center gap-1.5 font-bold text-mc-gold">
+                    <span>💡 Training Advice</span>
+                </div>
+                <ul id="trainingAdviceList" class="text-gray-300 space-y-1 list-disc list-inside">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- PLAYSTYLE PROFILE MODULE -->
+        <div class="bg-mc-panel border border-mc-border rounded-2xl p-5 space-y-3">
+            <h2 class="font-pixel text-sm font-bold text-white flex items-center justify-between">
+                <span>Playstyle Profile</span>
+                <span id="activeModesCount" class="text-xs font-sans font-normal text-mc-accent">0/13 Active</span>
+            </h2>
+
+            <div class="bg-mc-bg/60 border border-mc-border/60 rounded-xl p-3 space-y-2 text-xs">
+                <div>
+                    <span class="text-gray-400">Style: </span>
+                    <span id="playstyleName" class="font-bold text-mc-green">Unranked Challenger</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">Top Specializations: </span>
+                    <span id="topSpecializations" class="font-semibold text-white">None</span>
                 </div>
             </div>
         </div>
@@ -259,7 +288,7 @@
     // --- STATE MANAGEMENT ---
     let state = {
       playerName: "",
-      mainMode: "Sword",
+      mainMode: "None",
       modesState: MODES.map(() => ({ tier: 0, high: true }))
     };
 
@@ -298,8 +327,10 @@
 
     function populateMainModeSelect() {
       const select = document.getElementById('mainModeSelect');
-      select.innerHTML = MODES.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
-      select.value = state.mainMode || MODES[0].name;
+      // Añadimos la opción "None" al inicio
+      select.innerHTML = `<option value="None">None (No Main Mode)</option>` +
+        MODES.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+      select.value = state.mainMode || "None";
     }
 
     // --- RENDER FUNCTIONS ---
@@ -308,21 +339,18 @@
       container.innerHTML = MODES.map((mode, i) => {
         return `
           <div class="mode-card bg-mc-panel border border-mc-border hover:border-gray-600 rounded-xl p-3 sm:p-4 transition space-y-3" data-cat="${mode.cat}" data-index="${i}">
-            <!-- Top Row: Title & Points -->
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-bold text-white text-sm sm:text-base">${mode.name}</h3>
                 <span class="text-[11px] text-gray-400 capitalize">${mode.cat}</span>
               </div>
 
-              <!-- Points display for mode -->
               <div class="text-right">
                 <span class="mode-pts font-pixel text-mc-green font-bold text-base sm:text-lg">0</span>
                 <span class="text-xs text-gray-400"> pts</span>
               </div>
             </div>
 
-            <!-- Linear Tier Buttons: 0, HT1, LT1, HT2, LT2... -->
             <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-mc-border/40">
               <button type="button" data-tier="0" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">0</button>
               <button type="button" data-tier="1" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT1</button>
@@ -358,6 +386,9 @@
       let totalPoints = 0;
       let ht1Count = 0;
       let ht2OrBetterCount = 0;
+      let activeCount = 0;
+
+      let modesWithPts = [];
 
       // Update Mode Cards UI & Sum Total
       const cards = document.querySelectorAll('.mode-card');
@@ -366,6 +397,11 @@
         const mState = state.modesState[idx];
         const pts = calculatePoints(mState.tier, mState.high);
         totalPoints += pts;
+
+        if (mState.tier > 0) {
+          activeCount++;
+          modesWithPts.push({ name: MODES[idx].name, pts: pts, tier: mState.tier, high: mState.high });
+        }
 
         if (mState.high && mState.tier >= 1 && mState.tier <= 2) {
           ht2OrBetterCount++;
@@ -431,6 +467,41 @@
         progressText.textContent = `${totalPoints} pts (Max Title)`;
       }
 
+      // Render Training Advice
+      const trainingAdviceList = document.getElementById('trainingAdviceList');
+      let suggestions = [];
+      state.modesState.forEach((m, idx) => {
+        if (m.tier === 0) {
+          suggestions.push(`Get a tier in <strong>${MODES[idx].name}</strong> (+1 pt for LT5, +6 for LT3).`);
+        } else if (!m.high) {
+          suggestions.push(`Upgrade <strong>${MODES[idx].name}</strong> from LT${m.tier} to HT${m.tier}.`);
+        }
+      });
+
+      if (suggestions.length === 0) {
+        suggestions.push("Upgrade any current tier to Tier 1 or Tier 2 to gain huge points!");
+      }
+
+      trainingAdviceList.innerHTML = suggestions.slice(0, 2).map(s => `<li>${s}</li>`).join('');
+
+      // Render Playstyle Profile
+      document.getElementById('activeModesCount').textContent = `${activeCount}/13 Active`;
+      let styleName = "Unranked Challenger";
+      if (activeCount >= 10) styleName = "All-Rounder God";
+      else if (activeCount >= 6) styleName = "Versatile Combatant";
+      else if (activeCount >= 3) styleName = "Focused Specialist";
+      else if (activeCount >= 1) styleName = "One-Trick Pony";
+
+      document.getElementById('playstyleName').textContent = styleName;
+
+      // Top Specializations
+      modesWithPts.sort((a, b) => b.pts - a.pts);
+      if (modesWithPts.length > 0) {
+        document.getElementById('topSpecializations').textContent = modesWithPts.slice(0, 3).map(m => `${m.name} (${m.pts}pts)`).join(', ');
+      } else {
+        document.getElementById('topSpecializations').textContent = "None";
+      }
+
       // Determine Rank Level
       let rankLevel = 0;
       if (ht1Count >= 4) rankLevel = 5;
@@ -464,18 +535,23 @@
 
       document.getElementById('perksCount').textContent = `${unlockedCount}/${PERKS_DATA.length}`;
 
-      // Render Leaderboard simulation
-      const mainIndex = MODES.findIndex(m => m.name === state.mainMode);
-      const mainState = state.modesState[mainIndex];
+      // Render Leaderboard simulation (Ocultar si está en "None")
       const lCard = document.getElementById('leaderboardCard');
 
-      if (mainState && mainState.tier > 0) {
-        lCard.classList.remove('hidden');
-        document.getElementById('leaderboardPos').textContent = getWebLeaderboardPosition(mainState.tier, mainState.high);
-        const link = document.getElementById('leaderboardLink');
-        const url = `https://www.mcpvp.com/tiers/${MODES[mainIndex].urlKey}`;
-        link.href = url;
-        link.textContent = url;
+      if (state.mainMode && state.mainMode !== "None") {
+        const mainIndex = MODES.findIndex(m => m.name === state.mainMode);
+        const mainState = mainIndex !== -1 ? state.modesState[mainIndex] : null;
+
+        if (mainState && mainState.tier > 0) {
+          lCard.classList.remove('hidden');
+          document.getElementById('leaderboardPos').textContent = getWebLeaderboardPosition(mainState.tier, mainState.high);
+          const link = document.getElementById('leaderboardLink');
+          const url = `https://www.mcpvp.com/tiers/${MODES[mainIndex].urlKey}`;
+          link.href = url;
+          link.textContent = url;
+        } else {
+          lCard.classList.add('hidden');
+        }
       } else {
         lCard.classList.add('hidden');
       }
@@ -486,19 +562,16 @@
 
     // --- EVENT BINDINGS ---
     function bindEvents() {
-      // Player name input
       document.getElementById('playerName').addEventListener('input', (e) => {
         state.playerName = e.target.value;
         saveState();
       });
 
-      // Main mode select
       document.getElementById('mainModeSelect').addEventListener('change', (e) => {
         state.mainMode = e.target.value;
         calculateAndRender();
       });
 
-      // Modes container delegate click for linear tier buttons
       document.getElementById('modesContainer').addEventListener('click', (e) => {
         const card = e.target.closest('.mode-card');
         if (!card) return;
@@ -513,7 +586,6 @@
         }
       });
 
-      // Category Filters
       document.getElementById('categoryFilters').addEventListener('click', (e) => {
         const btn = e.target.closest('.cat-btn');
         if (!btn) return;
@@ -537,7 +609,6 @@
         document.getElementById('modeCount').textContent = count;
       });
 
-      // Reset button
       document.getElementById('btnReset').addEventListener('click', () => {
         if (confirm("Reset all mode tiers back to 0?")) {
           state.modesState = MODES.map(() => ({ tier: 0, high: true }));
