@@ -1,6 +1,9 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 
 // --- ANSI COLOR & FORMAT CONSTANTS ---
 String RESET  = "\u001B[0m";
@@ -19,6 +22,12 @@ String RESET  = "\u001B[0m";
         String COLOR_TIER_3    = "\u001B[93m";      // Yellow
         String COLOR_TIER_2    = "\u001B[92m";      // Light Green / Lime
         String COLOR_TIER_1    = "\u001B[32m";      // Green
+
+        // --- SIMULATION SETTINGS ---
+        Random random = new Random();
+
+        // Modes played first to 3 (the rest are first to 1)
+        Set<String> FT3_MODES = Set.of("sword", "axe", "bow", "creeper", "vanilla");
 
         record ModeResult(String mode, int tier, boolean isHigh, int points, String urlKey) {}
 
@@ -60,13 +69,14 @@ String RESET  = "\u001B[0m";
 
             // 2. Ask for main mode with validation loop
             ModeResult mainModeResult = null;
-            while (mainModeResult == null) {
-                IO.print(CYAN + "\nWhat is your main mode?: " + RESET);
+            boolean skipMainMode = false;
+            while (mainModeResult == null && !skipMainMode) {
+                IO.print(CYAN + "\nWhat is your main mode? (press Enter to skip): " + RESET);
                 String mainModeInput = IO.readln();
 
                 if (mainModeInput == null || mainModeInput.isBlank()) {
-                    IO.println(COLOR_TIER_NONE + "Please enter a mode name." + RESET);
-                    continue;
+                    skipMainMode = true;
+                    break;
                 }
 
                 String query = mainModeInput.trim().toLowerCase();
@@ -112,13 +122,13 @@ String RESET  = "\u001B[0m";
             printProgressAndRecommendations(totalPoints, results);
 
             // 3. Display estimated leaderboard position & official reference URL
-            if (mainModeResult.tier() > 0) {
+            if (mainModeResult != null && mainModeResult.tier() > 0) {
                 String referenceUrl = "https://www.mcpvp.com/tiers/" + mainModeResult.urlKey();
                 IO.println(BLUE + "\n[Global Leaderboard Simulation]" + RESET);
                 IO.println("Main mode: " + mainModeResult.mode() + " (" + (mainModeResult.isHigh() ? "HT" : "LT") + mainModeResult.tier() + ")");
                 IO.println("Estimated rank position: " + COLOR_TIER_1 + getWebLeaderboardPosition(mainModeResult) + RESET);
                 IO.println("Official reference: " + CYAN + referenceUrl + RESET);
-            } else {
+            } else if (mainModeResult != null) {
                 IO.println(COLOR_TIER_NONE + "\n[Leaderboard]: Your selected main mode has no tier assigned." + RESET);
             }
 
@@ -129,6 +139,13 @@ String RESET  = "\u001B[0m";
             }
             for (String perk : perks) {
                 IO.println("  - " + perk);
+            }
+
+            // 4. Optional match simulation vs a random rival
+            IO.print(CYAN + "\nSimulate a match vs a random player? (y/n): " + RESET);
+            String answer = IO.readln();
+            if (answer != null && answer.trim().equalsIgnoreCase("y")) {
+                simulateMatch(playerName, results);
             }
         }
 
@@ -365,4 +382,121 @@ String RESET  = "\u001B[0m";
             IO.println(String.format("%-15s | %-15s | %-35s", "Warrior", "250 - 399 pts", "High-tier seasoned veteran"));
             IO.println(String.format("%-15s | %-15s | %-35s", "Master", "400 - 599 pts", "Elite global contender"));
             IO.println(String.format("%-15s | %-15s | %-35s", "Grand Master", "600+ pts", "Legendary top-tier player"));
+        }
+
+// ===================== MATCH SIMULATION =====================
+
+        int getFirstTo(String mode) {
+            return FT3_MODES.contains(mode.toLowerCase()) ? 3 : 1;
+        }
+
+        List<ModeResult> generateRival(List<ModeResult> template) {
+            List<ModeResult> rival = new ArrayList<>();
+            for (ModeResult r : template) {
+                int tier = random.nextInt(6); // 0-5
+                boolean isHigh = tier > 0 && random.nextBoolean();
+                rival.add(new ModeResult(r.mode(), tier, isHigh, getTierPoints(tier, isHigh), r.urlKey()));
+            }
+            return rival;
+        }
+
+        ModeResult findMode(List<ModeResult> list, String mode) {
+            for (ModeResult r : list) {
+                if (r.mode().equalsIgnoreCase(mode)) return r;
+            }
+            return null;
+        }
+
+        String tierLabel(ModeResult r) {
+            if (r.tier() == 0) return COLOR_TIER_NONE + "no tier" + RESET;
+            return getTierColor(r.tier()) + (r.isHigh() ? "HT" : "LT") + r.tier() + RESET;
+        }
+
+        List<ModeResult> askThreeModes(List<ModeResult> results) {
+            List<ModeResult> picks = new ArrayList<>();
+            while (picks.size() < 3) {
+                IO.print(CYAN + "Pick mode " + (picks.size() + 1) + "/3: " + RESET);
+                String input = IO.readln();
+                if (input == null) break;
+
+                ModeResult found = findMode(results, input.trim());
+                if (found == null) {
+                    IO.println(COLOR_TIER_NONE + "Invalid mode name." + RESET);
+                } else if (picks.contains(found)) {
+                    IO.println(COLOR_TIER_NONE + "You already picked that mode." + RESET);
+                } else {
+                    picks.add(found);
+                }
+            }
+            return picks;
+        }
+
+        // Tier "level": no tier = 0, LT5 = 1, HT5 = 2, LT4 = 3 ... LT1 = 9, HT1 = 10
+        int getLevel(ModeResult r) {
+            if (r.tier() == 0) return 0;
+            return (6 - r.tier()) * 2 - (r.isHigh() ? 0 : 1);
+        }
+
+        // 50% if equal, +4% per level of difference (min 5%, max 95%)
+        double getWinChance(ModeResult mine, ModeResult theirs) {
+            int diff = getLevel(mine) - getLevel(theirs);
+            double chance = 0.5 + diff * 0.04;
+            return Math.max(0.05, Math.min(0.95, chance));
+        }
+
+        // Returns true if "mine" wins the mode
+        boolean playMode(String myName, ModeResult mine, String theirName, ModeResult theirs) {
+            int firstTo = getFirstTo(mine.mode());
+            double chance = getWinChance(mine, theirs);
+
+            int myScore = 0, theirScore = 0;
+            while (myScore < firstTo && theirScore < firstTo) {
+                if (random.nextDouble() < chance) myScore++; else theirScore++;
+            }
+
+            boolean iWin = myScore > theirScore;
+            IO.println(String.format("  %-11s FT%d | %s %s vs %s %s -> %d-%d | Winner: %s",
+                    mine.mode(), firstTo,
+                    myName, tierLabel(mine), theirName, tierLabel(theirs),
+                    myScore, theirScore,
+                    BOLD + (iWin ? myName : theirName) + RESET));
+            return iWin;
+        }
+
+        void simulateMatch(String playerName, List<ModeResult> playerResults) {
+            List<ModeResult> rival = generateRival(playerResults);
+            String rivalName = "Rival_" + (100 + random.nextInt(900));
+
+            IO.println(PURPLE + BOLD + "\n--- " + rivalName + " (random tiers) ---" + RESET);
+            for (ModeResult r : rival) {
+                IO.println(r.mode() + ": " + tierLabel(r));
+            }
+
+            IO.println(CYAN + "\nChoose 3 modes for the match:" + RESET);
+            List<ModeResult> myPicks = askThreeModes(playerResults);
+
+            // Rival picks his 3 best modes (highest tier level); ties are broken randomly
+            List<ModeResult> sortedRival = new ArrayList<>(rival);
+            Collections.shuffle(sortedRival, random);
+            sortedRival.sort(Comparator.comparingInt(this::getLevel).reversed());
+            List<ModeResult> rivalPicks = sortedRival.subList(0, 3);
+
+            int myWins = 0, rivalWins = 0;
+
+            IO.println(PURPLE + BOLD + "\n--- Your modes ---" + RESET);
+            for (ModeResult pick : myPicks) {
+                ModeResult theirs = findMode(rival, pick.mode());
+                if (playMode(playerName, pick, rivalName, theirs)) myWins++; else rivalWins++;
+            }
+
+            IO.println(PURPLE + BOLD + "\n--- " + rivalName + "'s modes ---" + RESET);
+            for (ModeResult pick : rivalPicks) {
+                ModeResult mine = findMode(playerResults, pick.mode());
+                if (playMode(playerName, mine, rivalName, pick)) myWins++; else rivalWins++;
+            }
+
+            IO.println(CYAN + "\nFinal score: " + BOLD + playerName + " " + myWins + " - " + rivalWins + " " + rivalName + RESET);
+            if (myWins > rivalWins) IO.println(COLOR_TIER_1 + BOLD + "You win!" + RESET);
+            else if (myWins < rivalWins) IO.println(COLOR_TIER_NONE + BOLD + "You lose." + RESET);
+            else IO.println(COLOR_TIER_3 + BOLD + "Draw." + RESET);
         }
