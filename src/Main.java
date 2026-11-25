@@ -5,94 +5,295 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-// --- ANSI COLOR & FORMAT CONSTANTS ---
-String RESET  = "\u001B[0m";
-        String BOLD   = "\u001B[1m";
-        String DIM    = "\u001B[2m";
+// ===================== CONSTANTS =====================
 
-        // Basic colors for UI elements
-        String CYAN   = "\u001B[36m";
-        String PURPLE = "\u001B[35m";
-        String BLUE   = "\u001B[34m";
+// ANSI colors & format
+final String RESET = "\u001B[0m";
+        final String BOLD  = "\u001B[1m";
+        final String DIM   = "\u001B[2m";
 
-        // Tier Gradient Palette (Red -> Orange -> Yellow -> Lime -> Bright Green)
-        String COLOR_TIER_NONE = "\u001B[31m";      // Red
-        String COLOR_TIER_5    = "\u001B[91m";      // Light Red / Coral
-        String COLOR_TIER_4    = "\u001B[33m";      // Orange / Amber
-        String COLOR_TIER_3    = "\u001B[93m";      // Yellow
-        String COLOR_TIER_2    = "\u001B[92m";      // Light Green / Lime
-        String COLOR_TIER_1    = "\u001B[32m";      // Green
+        final String CYAN   = "\u001B[36m";
+        final String PURPLE = "\u001B[35m";
+        final String BLUE   = "\u001B[34m";
 
-        // --- SIMULATION SETTINGS ---
-        Random random = new Random();
+        // Tier gradient palette (Red -> Orange -> Yellow -> Lime -> Green)
+        final String COLOR_TIER_NONE = "\u001B[31m"; // Red
+        final String COLOR_TIER_5    = "\u001B[91m"; // Light red / coral
+        final String COLOR_TIER_4    = "\u001B[33m"; // Orange / amber
+        final String COLOR_TIER_3    = "\u001B[93m"; // Yellow
+        final String COLOR_TIER_2    = "\u001B[92m"; // Lime
+        final String COLOR_TIER_1    = "\u001B[32m"; // Green
+
+        final Random random = new Random();
 
         // Modes played first to 3 (the rest are first to 1)
-        Set<String> FT3_MODES = Set.of("sword", "axe", "bow", "creeper", "vanilla");
+        final Set<String> FT3_MODES = Set.of("sword", "axe", "bow", "creeper", "vanilla");
+
+        // The 13 game modes (urlKey is only used to build the reference URL)
+        final ModeInfo[] MODES = {
+                new ModeInfo("Sword", "sword"),
+                new ModeInfo("Axe", "shield"),
+                new ModeInfo("Pot", "pot"),
+                new ModeInfo("UHC", "uhc"),
+                new ModeInfo("NethOP", "late-game"),
+                new ModeInfo("SMP", "smp"),
+                new ModeInfo("Mace", "mace"),
+                new ModeInfo("Spear Mace", "spear"),
+                new ModeInfo("Vanilla", "end-game"),
+                new ModeInfo("XbowCart", "cart"),
+                new ModeInfo("Cart", "cart"),
+                new ModeInfo("Creeper", "creeper"),
+                new ModeInfo("Bow", "bow")
+        };
+
+// ===================== DATA TYPES =====================
+
+        record ModeInfo(String name, String urlKey) {}
 
         record ModeResult(String mode, int tier, boolean isHigh, int points, String urlKey) {}
 
+        // Titles and their point thresholds live ONLY here
+        enum Title {
+            ROOKIE("Rookie", 0, "Starting tier level"),
+            SOLDIER("Soldier", 30, "Basic competitive competence"),
+            KNIGHT("Knight", 80, "Intermediate skilled player"),
+            FIGHTER("Fighter", 150, "Advanced combat specialist"),
+            WARRIOR("Warrior", 250, "High-tier seasoned veteran"),
+            MASTER("Master", 400, "Elite global contender"),
+            GRAND_MASTER("Grand Master", 600, "Legendary top-tier player");
+
+            final String label;
+            final int minPoints;
+            final String description;
+
+            Title(String label, int minPoints, String description) {
+                this.label = label;
+                this.minPoints = minPoints;
+                this.description = description;
+            }
+
+            static Title of(int points) {
+                Title result = ROOKIE;
+                for (Title t : values()) {
+                    if (points >= t.minPoints) result = t;
+                }
+                return result;
+            }
+
+            Title next() {
+                return this == GRAND_MASTER ? null : values()[ordinal() + 1];
+            }
+        }
+
+        // Ranks, requirements and perks live ONLY here (perks are cumulative)
+        enum Rank {
+            NONE("No rank", "-", List.of()),
+            ELITE("Elite", "1x HT2+", List.of("Rank tag in chat")),
+            ELITE_PLUS("Elite+", "2x HT2+", List.of("Access to customize armor trim and shield")),
+            MVP_PLUS("MVP+", "1x HT1", List.of("Access to Fly command")),
+            VIP("VIP", "2x HT1", List.of("Elytra and fireworks in lobby")),
+            VIP_PLUS("VIP+", "4x HT1", List.of(
+                    "Can be a tier tester for other users",
+                    "Spear with lunge 3",
+                    "Wind charges"));
+
+            final String label;
+            final String requirement;
+            final List<String> perks; // perks unlocked AT this rank
+
+            Rank(String label, String requirement, List<String> perks) {
+                this.label = label;
+                this.requirement = requirement;
+                this.perks = perks;
+            }
+
+            static Rank of(int ht1, int ht2OrBetter) {
+                if (ht1 >= 4) return VIP_PLUS;
+                if (ht1 >= 2) return VIP;
+                if (ht1 >= 1) return MVP_PLUS;
+                if (ht2OrBetter >= 2) return ELITE_PLUS;
+                if (ht2OrBetter >= 1) return ELITE;
+                return NONE;
+            }
+
+            List<String> allPerks() {
+                List<String> all = new ArrayList<>();
+                for (Rank r : values()) {
+                    if (r.ordinal() <= ordinal()) all.addAll(r.perks);
+                }
+                return all;
+            }
+        }
+
+// ===================== MAIN FLOW =====================
+
         void main() {
-            // 1. Prompt for Player Tag
+            String playerName = readPlayerName();
+            List<ModeResult> results = askAllModes();
+            int totalPoints = results.stream().mapToInt(ModeResult::points).sum();
+
+            ModeResult mainMode = askMainMode(results);
+
+            printSummary(playerName, results);
+            printRankInfoTable();
+            printTitleInfoTable();
+
+            Rank rank = getRank(results);
+            IO.println(CYAN + "\nTotal points: " + BOLD + totalPoints + RESET);
+            IO.println(CYAN + "Title: " + BOLD + COLOR_TIER_3 + Title.of(totalPoints).label + RESET);
+            IO.println(CYAN + "Rank: " + BOLD + PURPLE + rank.label + RESET);
+
+            printPlaystyleProfile(results);
+            printProgressAndRecommendations(totalPoints, results);
+            printLeaderboard(mainMode);
+            printPerks(rank);
+
+            IO.print(CYAN + "\nSimulate a match vs a random player? (y/n): " + RESET);
+            String answer = IO.readln();
+            if (answer != null && answer.trim().equalsIgnoreCase("y")) {
+                simulateMatch(playerName, results);
+            }
+        }
+
+// ===================== INPUT =====================
+
+        String readPlayerName() {
             IO.print(CYAN + "Enter your player tag: " + RESET);
-            String playerName = IO.readln();
-            if (playerName == null || playerName.isBlank()) {
-                playerName = "Steve_PvP";
-            }
+            String name = IO.readln();
+            return (name == null || name.isBlank()) ? "Steve_PvP" : name.trim();
+        }
 
-            // Definition of the 13 game modes and their reference keys on mcpvp.com
-            record ModeInfo(String name, String urlKey) {}
-
-            ModeInfo[] modeConfigs = {
-                    new ModeInfo("Sword", "sword"),
-                    new ModeInfo("Axe", "shield"),
-                    new ModeInfo("Pot", "pot"),
-                    new ModeInfo("UHC", "uhc"),
-                    new ModeInfo("NethOP", "late-game"),
-                    new ModeInfo("SMP", "smp"),
-                    new ModeInfo("Mace", "mace"),
-                    new ModeInfo("Spear Mace", "spear"),
-                    new ModeInfo("Vanilla", "end-game"),
-                    new ModeInfo("XbowCart", "cart"),
-                    new ModeInfo("Cart", "cart"),
-                    new ModeInfo("Creeper", "creeper"),
-                    new ModeInfo("Bow", "bow")
-            };
-
+        List<ModeResult> askAllModes() {
             List<ModeResult> results = new ArrayList<>();
-            int totalPoints = 0;
-
-            for (ModeInfo config : modeConfigs) {
-                ModeResult result = askMode(config.name(), config.urlKey());
-                results.add(result);
-                totalPoints += result.points();
+            for (ModeInfo info : MODES) {
+                results.add(askMode(info));
             }
+            return results;
+        }
 
-            // 2. Ask for main mode with validation loop
-            ModeResult mainModeResult = null;
-            boolean skipMainMode = false;
-            while (mainModeResult == null && !skipMainMode) {
-                IO.print(CYAN + "\nWhat is your main mode? (press Enter to skip): " + RESET);
-                String mainModeInput = IO.readln();
+        ModeResult askMode(ModeInfo info) {
+            int tier = -1;
+            while (tier < 0 || tier > 5) {
+                IO.print(info.name() + " tier (1-5, 0 = no tier): ");
+                String input = IO.readln();
+                if (input == null) return newResult(info.name(), 0, false, info.urlKey());
 
-                if (mainModeInput == null || mainModeInput.isBlank()) {
-                    skipMainMode = true;
-                    break;
+                try {
+                    tier = Integer.parseInt(input.trim());
+                } catch (NumberFormatException e) {
+                    IO.println(COLOR_TIER_NONE + "Enter a valid number." + RESET);
+                    continue;
                 }
-
-                String query = mainModeInput.trim().toLowerCase();
-                for (ModeResult r : results) {
-                    if (r.mode().toLowerCase().equals(query) || r.urlKey().toLowerCase().equals(query)) {
-                        mainModeResult = r;
-                        break;
-                    }
-                }
-
-                if (mainModeResult == null) {
-                    IO.println(COLOR_TIER_NONE + "Invalid mode name. Please choose one from the list." + RESET);
+                if (tier < 0 || tier > 5) {
+                    IO.println(COLOR_TIER_NONE + "Invalid tier." + RESET);
                 }
             }
 
-            // --- SUMMARY HEADER ---
+            if (tier == 0) return newResult(info.name(), 0, false, info.urlKey());
+
+            String level = "";
+            while (!level.equalsIgnoreCase("h") && !level.equalsIgnoreCase("l")) {
+                IO.print("High or Low tier? (h/l): ");
+                String input = IO.readln();
+                if (input == null) break;
+                level = input.trim();
+            }
+            return newResult(info.name(), tier, level.equalsIgnoreCase("h"), info.urlKey());
+        }
+
+        // Returns null if the player skips it
+        ModeResult askMainMode(List<ModeResult> results) {
+            List<String> names = new ArrayList<>();
+            for (ModeResult r : results) names.add(r.mode());
+            IO.println(DIM + "\nAvailable modes: " + String.join(", ", names) + RESET);
+
+            while (true) {
+                IO.print(CYAN + "What is your main mode? (press Enter to skip): " + RESET);
+                String input = IO.readln();
+                if (input == null || input.isBlank()) return null;
+
+                ModeResult found = findMode(results, input);
+                if (found != null) return found;
+
+                IO.println(COLOR_TIER_NONE + "Invalid mode name. Please choose one from the list." + RESET);
+            }
+        }
+
+// ===================== SCORING =====================
+
+        int getTierPoints(int tier, boolean isHigh) {
+            return switch (tier) {
+                case 1 -> isHigh ? 60 : 45;
+                case 2 -> isHigh ? 30 : 20;
+                case 3 -> isHigh ? 10 : 6;
+                case 4 -> isHigh ? 4 : 3;
+                case 5 -> isHigh ? 2 : 1;
+                default -> 0;
+            };
+        }
+
+        ModeResult newResult(String mode, int tier, boolean isHigh, String urlKey) {
+            return new ModeResult(mode, tier, isHigh, getTierPoints(tier, isHigh), urlKey);
+        }
+
+        // Tier "level": no tier = 0, LT5 = 1, HT5 = 2, LT4 = 3 ... LT1 = 9, HT1 = 10
+        int getLevel(ModeResult r) {
+            if (r.tier() == 0) return 0;
+            return (6 - r.tier()) * 2 - (r.isHigh() ? 0 : 1);
+        }
+
+        // Inverse of getLevel
+        ModeResult fromLevel(String mode, int level, String urlKey) {
+            if (level <= 0) return newResult(mode, 0, false, urlKey);
+            int tier = 6 - (level + 1) / 2;
+            boolean isHigh = level % 2 == 0;
+            return newResult(mode, tier, isHigh, urlKey);
+        }
+
+        Rank getRank(List<ModeResult> results) {
+            int ht1 = 0;
+            int ht2OrBetter = 0;
+            for (ModeResult r : results) {
+                if (r.isHigh() && r.tier() >= 1 && r.tier() <= 2) {
+                    ht2OrBetter++;
+                    if (r.tier() == 1) ht1++;
+                }
+            }
+            return Rank.of(ht1, ht2OrBetter);
+        }
+
+        // Same lookup everywhere: by mode name, ignoring case and spaces ("spear mace" == "SpearMace")
+        String normalize(String s) {
+            return s.toLowerCase().replace(" ", "");
+        }
+
+        ModeResult findMode(List<ModeResult> list, String input) {
+            String query = normalize(input);
+            for (ModeResult r : list) {
+                if (normalize(r.mode()).equals(query)) return r;
+            }
+            return null;
+        }
+
+// ===================== OUTPUT =====================
+
+        String getTierColor(int tier) {
+            return switch (tier) {
+                case 1 -> COLOR_TIER_1;
+                case 2 -> COLOR_TIER_2;
+                case 3 -> COLOR_TIER_3;
+                case 4 -> COLOR_TIER_4;
+                case 5 -> COLOR_TIER_5;
+                default -> COLOR_TIER_NONE;
+            };
+        }
+
+        String tierLabel(ModeResult r) {
+            if (r.tier() == 0) return COLOR_TIER_NONE + "no tier" + RESET;
+            return getTierColor(r.tier()) + (r.isHigh() ? "HT" : "LT") + r.tier() + RESET;
+        }
+
+        void printSummary(String playerName, List<ModeResult> results) {
             IO.println(PURPLE + BOLD + "\n--- Tier List Summary: " + playerName + " ---" + RESET);
             for (ModeResult r : results) {
                 if (r.tier() == 0) {
@@ -103,72 +304,29 @@ String RESET  = "\u001B[0m";
                     IO.println(r.mode() + ": " + tierFormatted + " (" + r.points() + " pts)");
                 }
             }
+        }
 
-            // Reference tables printed after mode results
-            printRankInfoTable();
-            printTitleInfoTable();
-
-            // --- FINAL RESULTS AND PERKS ---
-            int rankLevel = getRankLevel(results);
-
-            IO.println(CYAN + "\nTotal points: " + BOLD + totalPoints + RESET);
-            IO.println(CYAN + "Title: " + BOLD + COLOR_TIER_3 + getTitle(totalPoints) + RESET);
-            IO.println(CYAN + "Rank: " + BOLD + PURPLE + getRankName(rankLevel) + RESET);
-
-            // --- PLAYSTYLE PROFILE ---
-            printPlaystyleProfile(results);
-
-            // --- PROGRESS BAR & TRAINING RECOMMENDATIONS ---
-            printProgressAndRecommendations(totalPoints, results);
-
-            // 3. Display estimated leaderboard position & official reference URL
-            if (mainModeResult != null && mainModeResult.tier() > 0) {
-                String referenceUrl = "https://www.mcpvp.com/tiers/" + mainModeResult.urlKey();
-                IO.println(BLUE + "\n[Global Leaderboard Simulation]" + RESET);
-                IO.println("Main mode: " + mainModeResult.mode() + " (" + (mainModeResult.isHigh() ? "HT" : "LT") + mainModeResult.tier() + ")");
-                IO.println("Estimated rank position: " + COLOR_TIER_1 + getWebLeaderboardPosition(mainModeResult) + RESET);
-                IO.println("Official reference: " + CYAN + referenceUrl + RESET);
-            } else if (mainModeResult != null) {
-                IO.println(COLOR_TIER_NONE + "\n[Leaderboard]: Your selected main mode has no tier assigned." + RESET);
-            }
-
-            IO.println(COLOR_TIER_3 + "\nUnlocked Perks:" + RESET);
-            List<String> perks = getPerks(rankLevel);
-            if (perks.isEmpty()) {
-                IO.println("  (none)");
-            }
-            for (String perk : perks) {
-                IO.println("  - " + perk);
-            }
-
-            // 4. Optional match simulation vs a random rival
-            IO.print(CYAN + "\nSimulate a match vs a random player? (y/n): " + RESET);
-            String answer = IO.readln();
-            if (answer != null && answer.trim().equalsIgnoreCase("y")) {
-                simulateMatch(playerName, results);
+        void printRankInfoTable() {
+            IO.println(CYAN + "\n--- Ranks & Perks Reference Table ---" + RESET);
+            IO.println(String.format("%-8s | %-12s | %s", "Rank", "Requirements", "New perks"));
+            IO.println("-".repeat(90));
+            for (Rank r : Rank.values()) {
+                if (r == Rank.NONE) continue;
+                IO.println(String.format("%-8s | %-12s | %s", r.label, r.requirement, String.join(", ", r.perks)));
             }
         }
 
-        // Devuelve un color en degradado desde Rojo (Tiers bajos) hasta Verde (Tier 1)
-        String getTierColor(int tier) {
-            return switch (tier) {
-                case 1 -> COLOR_TIER_1; // Pure Green
-                case 2 -> COLOR_TIER_2; // Lime / Light Green
-                case 3 -> COLOR_TIER_3; // Yellow
-                case 4 -> COLOR_TIER_4; // Orange
-                case 5 -> COLOR_TIER_5; // Light Red
-                default -> COLOR_TIER_NONE;
-            };
-        }
-
-        String getTitle(int totalPoints) {
-            if (totalPoints >= 600) return "Grand Master";
-            if (totalPoints >= 400) return "Master";
-            if (totalPoints >= 250) return "Warrior";
-            if (totalPoints >= 150) return "Fighter";
-            if (totalPoints >= 80) return "Knight";
-            if (totalPoints >= 30) return "Soldier";
-            return "Rookie";
+        void printTitleInfoTable() {
+            IO.println(CYAN + "\n--- Titles & Points Reference Table ---" + RESET);
+            IO.println(String.format("%-15s | %-15s | %s", "Title", "Points Required", "Description"));
+            IO.println("-".repeat(71));
+            for (Title t : Title.values()) {
+                Title next = t.next();
+                String range = (next == null)
+                        ? t.minPoints + "+ pts"
+                        : t.minPoints + " - " + (next.minPoints - 1) + " pts";
+                IO.println(String.format("%-15s | %-15s | %s", t.label, range, t.description));
+            }
         }
 
         void printPlaystyleProfile(List<ModeResult> results) {
@@ -182,206 +340,104 @@ String RESET  = "\u001B[0m";
             else style = "Unranked Challenger";
 
             IO.println(CYAN + "\n--- Playstyle Profile ---" + RESET);
-            IO.println("Active Modes: " + BOLD + activeModes + "/13" + RESET);
+            IO.println("Active Modes: " + BOLD + activeModes + "/" + results.size() + RESET);
             IO.println("Playstyle: " + BOLD + COLOR_TIER_2 + style + RESET);
 
-            // Top 3 best modes by points
+            // Top 3 modes by points
             List<ModeResult> sorted = new ArrayList<>(results);
             sorted.sort(Comparator.comparingInt(ModeResult::points).reversed());
 
-            if (!sorted.isEmpty() && sorted.get(0).points() > 0) {
-                IO.print("Top Specializations: ");
-                List<String> topModes = new ArrayList<>();
-                for (int i = 0; i < Math.min(3, sorted.size()); i++) {
-                    if (sorted.get(i).points() > 0) {
-                        topModes.add(sorted.get(i).mode() + " (" + sorted.get(i).points() + " pts)");
-                    }
+            List<String> topModes = new ArrayList<>();
+            for (int i = 0; i < Math.min(3, sorted.size()); i++) {
+                if (sorted.get(i).points() > 0) {
+                    topModes.add(sorted.get(i).mode() + " (" + sorted.get(i).points() + " pts)");
                 }
-                IO.println(BOLD + String.join(", ", topModes) + RESET);
+            }
+            if (!topModes.isEmpty()) {
+                IO.println("Top Specializations: " + BOLD + String.join(", ", topModes) + RESET);
             }
         }
 
         void printProgressAndRecommendations(int totalPoints, List<ModeResult> results) {
-            int[] thresholds = {0, 30, 80, 150, 250, 400, 600};
-            String[] titles = {"Rookie", "Soldier", "Knight", "Fighter", "Warrior", "Master", "Grand Master"};
+            Title current = Title.of(totalPoints);
+            Title next = current.next();
 
-            int currentIdx = 0;
-            for (int i = 0; i < thresholds.length; i++) {
-                if (totalPoints >= thresholds[i]) {
-                    currentIdx = i;
-                }
-            }
-
-            if (currentIdx == thresholds.length - 1) {
+            if (next == null) {
                 IO.println(COLOR_TIER_3 + BOLD + "\n🏆 You have reached the maximum title: Grand Master! 🏆" + RESET);
                 return;
             }
 
-            int currentThreshold = thresholds[currentIdx];
-            int nextThreshold = thresholds[currentIdx + 1];
-            int pointsNeeded = nextThreshold - totalPoints;
-            String nextTitle = titles[currentIdx + 1];
-
-            int progressRange = nextThreshold - currentThreshold;
-            int currentProgress = totalPoints - currentThreshold;
-            int percent = (currentProgress * 10) / progressRange;
+            int pointsNeeded = next.minPoints - totalPoints;
+            int range = next.minPoints - current.minPoints;
+            int progress = totalPoints - current.minPoints;
+            int filled = (progress * 10) / range;
 
             StringBuilder bar = new StringBuilder("[");
             for (int i = 0; i < 10; i++) {
-                bar.append(i < percent ? "█" : "░");
+                bar.append(i < filled ? "█" : "░");
             }
-            bar.append("] ").append((currentProgress * 100) / progressRange).append("%");
+            bar.append("] ").append((progress * 100) / range).append("%");
 
-            IO.println(CYAN + "\n--- Progress to Next Title (" + nextTitle + ") ---" + RESET);
+            IO.println(CYAN + "\n--- Progress to Next Title (" + next.label + ") ---" + RESET);
             IO.println("Points needed: " + COLOR_TIER_3 + pointsNeeded + " more pts" + RESET);
-            IO.println("Progress: " + COLOR_TIER_1 + bar.toString() + RESET);
+            IO.println("Progress: " + COLOR_TIER_1 + bar + RESET);
 
-            // Smart Training Recommendation
-            IO.println(COLOR_TIER_3 + "\n💡 Training Advice (Easiest Way to Rank Up):" + RESET);
-            List<String> suggestions = new ArrayList<>();
+            // Training advice: best single-step upgrade per mode, sorted by points gained
+            record Upgrade(String text, int gain) {}
+            List<Upgrade> upgrades = new ArrayList<>();
             for (ModeResult r : results) {
-                if (r.tier() == 0) {
-                    suggestions.add("Get a basic tier in " + BOLD + r.mode() + RESET + " (e.g. LT5 gives +1 pt, LT3 gives +6 pts).");
-                } else if (!r.isHigh()) {
-                    suggestions.add("Push " + BOLD + r.mode() + RESET + " from LT" + r.tier() + " to HT" + r.tier() + ".");
-                }
-                if (suggestions.size() >= 2) break;
+                int level = getLevel(r);
+                if (level >= 10) continue; // already HT1
+                ModeResult up = fromLevel(r.mode(), level + 1, r.urlKey());
+                upgrades.add(new Upgrade(
+                        BOLD + r.mode() + RESET + ": " + tierLabel(r) + " -> " + tierLabel(up),
+                        up.points() - r.points()));
             }
-            if (suggestions.isEmpty()) {
-                suggestions.add("Upgrade any of your current tiers to Tier 1 or Tier 2 to gain huge points!");
-            }
-            for (String s : suggestions) {
-                IO.println("  • " + s);
+            upgrades.sort(Comparator.comparingInt(Upgrade::gain).reversed());
+
+            IO.println(COLOR_TIER_3 + "\n💡 Training Advice (best single-step upgrades):" + RESET);
+            for (int i = 0; i < Math.min(3, upgrades.size()); i++) {
+                Upgrade u = upgrades.get(i);
+                String extra = u.gain() >= pointsNeeded ? " -> reaches " + BOLD + next.label + RESET : "";
+                IO.println("  • " + u.text() + " (+" + u.gain() + " pts)" + extra);
             }
         }
 
-        ModeResult askMode(String modeName, String urlKey) {
-            int tier = -1;
+        void printLeaderboard(ModeResult mainMode) {
+            if (mainMode == null) return;
 
-            while (tier < 0 || tier > 5) {
-                IO.print(modeName + " tier (1-5, 0 = no tier): ");
-                String input = IO.readln();
-                if (input == null) return new ModeResult(modeName, 0, false, 0, urlKey);
-
-                try {
-                    tier = Integer.parseInt(input.trim());
-                } catch (NumberFormatException e) {
-                    IO.println(COLOR_TIER_NONE + "Enter a valid number." + RESET);
-                    continue;
-                }
-                if (tier < 0 || tier > 5) {
-                    IO.println(COLOR_TIER_NONE + "Invalid tier." + RESET);
-                }
+            if (mainMode.tier() == 0) {
+                IO.println(COLOR_TIER_NONE + "\n[Leaderboard]: Your selected main mode has no tier assigned." + RESET);
+                return;
             }
 
-            if (tier == 0) return new ModeResult(modeName, 0, false, 0, urlKey);
-
-            String level = "";
-            while (!level.equalsIgnoreCase("h") && !level.equalsIgnoreCase("l")) {
-                IO.print("High or Low tier? (h/l): ");
-                String input = IO.readln();
-                if (input == null) break;
-                level = input.trim();
-            }
-            boolean isHigh = level.equalsIgnoreCase("h");
-
-            return new ModeResult(modeName, tier, isHigh, getTierPoints(tier, isHigh), urlKey);
-        }
-
-        int getTierPoints(int tier, boolean isHigh) {
-            return switch (tier) {
-                case 1 -> isHigh ? 60 : 45;
-                case 2 -> isHigh ? 30 : 20;
-                case 3 -> isHigh ? 10 : 6;
-                case 4 -> isHigh ? 4 : 3;
-                case 5 -> isHigh ? 2 : 1;
-                default -> 0;
-            };
+            String referenceUrl = "https://www.mcpvp.com/tiers/" + mainMode.urlKey();
+            IO.println(BLUE + "\n[Global Leaderboard Simulation - estimated, not real data]" + RESET);
+            IO.println("Main mode: " + mainMode.mode() + " (" + (mainMode.isHigh() ? "HT" : "LT") + mainMode.tier() + ")");
+            IO.println("Estimated rank position: " + COLOR_TIER_1 + getWebLeaderboardPosition(mainMode) + RESET);
+            IO.println("Official reference: " + CYAN + referenceUrl + RESET);
         }
 
         String getWebLeaderboardPosition(ModeResult r) {
-            int tier = r.tier();
-            boolean isHigh = r.isHigh();
-
-            if (tier == 1) {
-                return isHigh ? "Top 1 - 10 worldwide (Elite Global Tier)" : "Top 11 - 25 worldwide";
-            } else if (tier == 2) {
-                return isHigh ? "Top 26 - 60 worldwide" : "Top 61 - 120 worldwide";
-            } else if (tier == 3) {
-                return isHigh ? "Top 121 - 300 worldwide" : "Top 301 - 600 worldwide";
-            } else if (tier == 4) {
-                return isHigh ? "Top 601 - 1200 worldwide" : "Top 1201 - 2000 worldwide";
-            } else {
-                return "Beginner Tier / Regional Competitive";
-            }
-        }
-
-        int getRankLevel(List<ModeResult> results) {
-            int ht1 = 0;
-            int ht2OrBetter = 0;
-
-            for (ModeResult r : results) {
-                if (r.isHigh() && r.tier() >= 1 && r.tier() <= 2) {
-                    ht2OrBetter++;
-                    if (r.tier() == 1) ht1++;
-                }
-            }
-
-            if (ht1 >= 4) return 5;
-            if (ht1 >= 2) return 4;
-            if (ht1 >= 1) return 3;
-            if (ht2OrBetter >= 2) return 2;
-            if (ht2OrBetter >= 1) return 1;
-            return 0;
-        }
-
-        String getRankName(int rankLevel) {
-            return switch (rankLevel) {
-                case 5 -> "VIP+";
-                case 4 -> "VIP";
-                case 3 -> "MVP+";
-                case 2 -> "Elite+";
-                case 1 -> "Elite";
-                default -> "No rank";
+            boolean high = r.isHigh();
+            return switch (r.tier()) {
+                case 1 -> high ? "Top 1 - 10 worldwide (Elite Global Tier)" : "Top 11 - 25 worldwide";
+                case 2 -> high ? "Top 26 - 60 worldwide" : "Top 61 - 120 worldwide";
+                case 3 -> high ? "Top 121 - 300 worldwide" : "Top 301 - 600 worldwide";
+                case 4 -> high ? "Top 601 - 1200 worldwide" : "Top 1201 - 2000 worldwide";
+                default -> "Beginner Tier / Regional Competitive";
             };
         }
 
-        List<String> getPerks(int rankLevel) {
-            List<String> perks = new ArrayList<>();
-            if (rankLevel >= 1) perks.add("Rank tag in chat");
-            if (rankLevel >= 2) perks.add("Access to customize armor trim and shield");
-            if (rankLevel >= 3) perks.add("Access to Fly command");
-            if (rankLevel >= 4) perks.add("Elytra and fireworks in lobby");
-            if (rankLevel >= 5) {
-                perks.add("Can be a tier tester for other users");
-                perks.add("Spear with lunge 3");
-                perks.add("Wind charges");
+        void printPerks(Rank rank) {
+            IO.println(COLOR_TIER_3 + "\nUnlocked Perks:" + RESET);
+            List<String> perks = rank.allPerks();
+            if (perks.isEmpty()) {
+                IO.println("  (none)");
             }
-            return perks;
-        }
-
-        void printRankInfoTable() {
-            IO.println(CYAN + "\n--- Ranks & Perks Reference Table ---" + RESET);
-            IO.println(String.format("%-10s | %-25s | %-35s", "Rank", "Requirements", "Perks"));
-            IO.println("-".repeat(78));
-            IO.println(String.format("%-10s | %-25s | %-35s", "Elite", "1x HT2+", "Rank tag in chat"));
-            IO.println(String.format("%-10s | %-25s | %-35s", "Elite+", "2x HT2+", "Customize armor trim & shield"));
-            IO.println(String.format("%-10s | %-25s | %-35s", "MVP+", "1x HT1", "Access to Fly command"));
-            IO.println(String.format("%-10s | %-25s | %-35s", "VIP", "2x HT1", "Elytra & fireworks in lobby"));
-            IO.println(String.format("%-10s | %-25s | %-35s", "VIP+", "4x HT1", "Tier tester, Spear lunge 3, Wind charges"));
-        }
-
-        void printTitleInfoTable() {
-            IO.println(CYAN + "\n--- Titles & Points Reference Table ---" + RESET);
-            IO.println(String.format("%-15s | %-15s | %-35s", "Title", "Points Required", "Description"));
-            IO.println("-".repeat(71));
-            IO.println(String.format("%-15s | %-15s | %-35s", "Rookie", "0 - 29 pts", "Starting tier level"));
-            IO.println(String.format("%-15s | %-15s | %-35s", "Soldier", "30 - 79 pts", "Basic competitive competence"));
-            IO.println(String.format("%-15s | %-15s | %-35s", "Knight", "80 - 149 pts", "Intermediate skilled player"));
-            IO.println(String.format("%-15s | %-15s | %-35s", "Fighter", "150 - 249 pts", "Advanced combat specialist"));
-            IO.println(String.format("%-15s | %-15s | %-35s", "Warrior", "250 - 399 pts", "High-tier seasoned veteran"));
-            IO.println(String.format("%-15s | %-15s | %-35s", "Master", "400 - 599 pts", "Elite global contender"));
-            IO.println(String.format("%-15s | %-15s | %-35s", "Grand Master", "600+ pts", "Legendary top-tier player"));
+            for (String perk : perks) {
+                IO.println("  - " + perk);
+            }
         }
 
 // ===================== MATCH SIMULATION =====================
@@ -395,21 +451,9 @@ String RESET  = "\u001B[0m";
             for (ModeResult r : template) {
                 int tier = random.nextInt(6); // 0-5
                 boolean isHigh = tier > 0 && random.nextBoolean();
-                rival.add(new ModeResult(r.mode(), tier, isHigh, getTierPoints(tier, isHigh), r.urlKey()));
+                rival.add(newResult(r.mode(), tier, isHigh, r.urlKey()));
             }
             return rival;
-        }
-
-        ModeResult findMode(List<ModeResult> list, String mode) {
-            for (ModeResult r : list) {
-                if (r.mode().equalsIgnoreCase(mode)) return r;
-            }
-            return null;
-        }
-
-        String tierLabel(ModeResult r) {
-            if (r.tier() == 0) return COLOR_TIER_NONE + "no tier" + RESET;
-            return getTierColor(r.tier()) + (r.isHigh() ? "HT" : "LT") + r.tier() + RESET;
         }
 
         List<ModeResult> askThreeModes(List<ModeResult> results) {
@@ -419,7 +463,7 @@ String RESET  = "\u001B[0m";
                 String input = IO.readln();
                 if (input == null) break;
 
-                ModeResult found = findMode(results, input.trim());
+                ModeResult found = findMode(results, input);
                 if (found == null) {
                     IO.println(COLOR_TIER_NONE + "Invalid mode name." + RESET);
                 } else if (picks.contains(found)) {
@@ -429,12 +473,6 @@ String RESET  = "\u001B[0m";
                 }
             }
             return picks;
-        }
-
-        // Tier "level": no tier = 0, LT5 = 1, HT5 = 2, LT4 = 3 ... LT1 = 9, HT1 = 10
-        int getLevel(ModeResult r) {
-            if (r.tier() == 0) return 0;
-            return (6 - r.tier()) * 2 - (r.isHigh() ? 0 : 1);
         }
 
         // 50% if equal, +4% per level of difference (min 5%, max 95%)
