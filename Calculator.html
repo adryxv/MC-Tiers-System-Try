@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Minecraft Tier System - Player Dashboard</title>
 
     <!-- Fonts -->
@@ -315,8 +315,14 @@
         const saved = localStorage.getItem('mc_tier_system_data');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed.modesState && parsed.modesState.length === MODES.length) {
+          const valid = Array.isArray(parsed.modesState)
+            && parsed.modesState.length === MODES.length
+            && parsed.modesState.every(m => Number.isInteger(m.tier) && m.tier >= 0 && m.tier <= 5 && typeof m.high === 'boolean');
+          if (valid) {
             state = parsed;
+            if (state.mainMode !== "None" && !MODES.some(m => m.name === state.mainMode)) {
+              state.mainMode = "None";
+            }
           }
         }
       } catch (e) {
@@ -334,6 +340,16 @@
     }
 
     // --- RENDER FUNCTIONS ---
+    // Tier buttons: 0, HT1, LT1, HT2, LT2 ... HT5, LT5
+    const TIER_BTN_CLASS = "tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition";
+    const TIER_BUTTONS_HTML = [
+      `<button type="button" data-tier="0" data-high="true" class="${TIER_BTN_CLASS}">0</button>`,
+      ...[1, 2, 3, 4, 5].flatMap(t => [
+        `<button type="button" data-tier="${t}" data-high="true" class="${TIER_BTN_CLASS}">HT${t}</button>`,
+        `<button type="button" data-tier="${t}" data-high="false" class="${TIER_BTN_CLASS}">LT${t}</button>`
+      ])
+    ].join('\n');
+
     function renderModesList() {
       const container = document.getElementById('modesContainer');
       container.innerHTML = MODES.map((mode, i) => {
@@ -352,17 +368,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-mc-border/40">
-              <button type="button" data-tier="0" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">0</button>
-              <button type="button" data-tier="1" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT1</button>
-              <button type="button" data-tier="1" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT1</button>
-              <button type="button" data-tier="2" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT2</button>
-              <button type="button" data-tier="2" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT2</button>
-              <button type="button" data-tier="3" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT3</button>
-              <button type="button" data-tier="3" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT3</button>
-              <button type="button" data-tier="4" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT4</button>
-              <button type="button" data-tier="4" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT4</button>
-              <button type="button" data-tier="5" data-high="true" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">HT5</button>
-              <button type="button" data-tier="5" data-high="false" class="tier-linear-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-mc-card border border-mc-border text-gray-400 hover:text-white transition">LT5</button>
+              ${TIER_BUTTONS_HTML}
             </div>
           </div>
         `;
@@ -467,22 +473,29 @@
         progressText.textContent = `${totalPoints} pts (Max Title)`;
       }
 
-      // Render Training Advice
-      const trainingAdviceList = document.getElementById('trainingAdviceList');
-      let suggestions = [];
+      // Render Training Advice (same logic as the Java version: top 3 single-step upgrades)
+      const levelOf = (m) => m.tier === 0 ? 0 : (6 - m.tier) * 2 - (m.high ? 0 : 1);
+      const fromLevel = (lvl) => lvl <= 0
+        ? { tier: 0, high: false }
+        : { tier: 6 - Math.floor((lvl + 1) / 2), high: lvl % 2 === 0 };
+      const tierText = (m) => m.tier === 0 ? 'no tier' : `${m.high ? 'HT' : 'LT'}${m.tier}`;
+
+      const pointsNeeded = nextTitle ? nextTitle.min - totalPoints : 0;
+      const upgrades = [];
       state.modesState.forEach((m, idx) => {
-        if (m.tier === 0) {
-          suggestions.push(`Get a tier in <strong>${MODES[idx].name}</strong> (+1 pt for LT5, +6 for LT3).`);
-        } else if (!m.high) {
-          suggestions.push(`Upgrade <strong>${MODES[idx].name}</strong> from LT${m.tier} to HT${m.tier}.`);
-        }
+        const lvl = levelOf(m);
+        if (lvl >= 10) return; // already HT1
+        const up = fromLevel(lvl + 1);
+        const gain = calculatePoints(up.tier, up.high) - calculatePoints(m.tier, m.high);
+        upgrades.push({ name: MODES[idx].name, from: tierText(m), to: tierText(up), gain });
       });
+      upgrades.sort((a, b) => b.gain - a.gain);
 
-      if (suggestions.length === 0) {
-        suggestions.push("Upgrade any current tier to Tier 1 or Tier 2 to gain huge points!");
-      }
-
-      trainingAdviceList.innerHTML = suggestions.slice(0, 2).map(s => `<li>${s}</li>`).join('');
+      document.getElementById('trainingAdviceList').innerHTML = upgrades.slice(0, 3).map(u => {
+        const extra = nextTitle && u.gain >= pointsNeeded
+          ? ` → reaches <strong>${nextTitle.name}</strong>` : '';
+        return `<li><strong>${u.name}</strong>: ${u.from} → ${u.to} (+${u.gain} pts)${extra}</li>`;
+      }).join('');
 
       // Render Playstyle Profile
       document.getElementById('activeModesCount').textContent = `${activeCount}/13 Active`;
