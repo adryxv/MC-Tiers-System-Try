@@ -29,6 +29,7 @@ Programa interactivo de consola en Java inspirado en el sistema competitivo **MC
 - **Posición estimada** en el ranking global de tu modalidad principal (simulada, no son datos reales).
 - **Perks** desbloqueados según el rango.
 - **Simulación de combate** contra un rival aleatorio.
+- **Versión web** con las mismas reglas (ver más abajo).
 
 ### 🖥️ Ejemplo de salida
 
@@ -47,7 +48,7 @@ Rank: Elite
 
 --- Progress to Next Title (Fighter) ---
 Points needed: 54 more pts
-PProgress: [██░░░░░░░░] 22%
+Progress: [██░░░░░░░░] 22%
 
 💡 Training Advice (best single-step upgrades):
   • Sword: HT2 -> LT1 (+15 pts)
@@ -97,6 +98,7 @@ Sword · Axe · Pot · UHC · NethOP · SMP · Mace · Spear Mace · Vanilla · 
 - Se genera un rival con tiers aleatorios en las 13 modalidades.
 - Tú eliges 3 modalidades; el rival elige sus 3 mejores (empates al azar).
 - Se juegan las 6 modalidades: **FT3** en *Sword, Axe, Bow, Creeper, Vanilla* y **FT1** en el resto.
+- Si ambos eligen la misma modalidad, se juega dos veces (una por cada elección).
 - Probabilidad de ganar cada ronda: **50 %** con el mismo nivel, **±4 %** por cada nivel de diferencia (mín. 5 %, máx. 95 %).
 
 Los niveles van de `sin tier = 0`, `LT5 = 1`, `HT5 = 2`, … hasta `HT1 = 10`.
@@ -128,6 +130,10 @@ java src/Main.java
 ```
 
 También puedes abrirlo en IntelliJ IDEA y ejecutar `Main.java`.
+
+### 🌐 Versión web
+
+Abre `calculator.html` en el navegador: mismo sistema de puntos, títulos y rangos que la versión de consola, con el progreso guardado en `localStorage`.
 
 ### 🛣️ Próximos pasos
 
@@ -162,10 +168,31 @@ An interactive Java console app inspired by the **MCTiers** competitive system. 
 - **Estimated position** on the global leaderboard for your main mode (simulated, not real data).
 - Unlocked **perks** based on your rank.
 - **Match simulation** against a random rival.
+- **Web version** with the same rules (see below).
 
 ### 🖥️ Sample output
 
-See the Spanish section above. Replace it with a real terminal screenshot when you can.
+```text
+Enter your player tag: Adry
+Sword tier (1-5, 0 = no tier): 2
+High or Low tier? (h/l): h
+...
+--- Tier List Summary: Adry ---
+Sword: HT2 (30 pts)
+Axe: LT3 (6 pts)
+...
+Total points: 96
+Title: Knight
+Rank: Elite
+
+--- Progress to Next Title (Fighter) ---
+Points needed: 54 more pts
+Progress: [██░░░░░░░░] 22%
+
+💡 Training Advice (best single-step upgrades):
+  • Sword: HT2 -> LT1 (+15 pts)
+  ...
+```
 
 ### ⚔️ Game Modes (13)
 
@@ -210,6 +237,7 @@ Sword · Axe · Pot · UHC · NethOP · SMP · Mace · Spear Mace · Vanilla · 
 - A rival with random tiers is generated for all 13 modes.
 - You pick 3 modes; the rival picks their 3 best (ties broken randomly).
 - All 6 modes are played: **FT3** for *Sword, Axe, Bow, Creeper, Vanilla* and **FT1** for the rest.
+- If both pick the same mode, it is played twice (once per pick).
 - Round win chance: **50%** at equal level, **±4%** per level of difference (min 5%, max 95%).
 
 Levels go from `no tier = 0`, `LT5 = 1`, `HT5 = 2`, … up to `HT1 = 10`.
@@ -231,6 +259,10 @@ java src/Main.java
 ```
 
 You can also open it in IntelliJ IDEA and run `Main.java`.
+
+### 🌐 Web version
+
+Open `calculator.html` in your browser: same points, titles and ranks as the console version, with progress saved in `localStorage`.
 
 ### 🛣️ Roadmap
 
