@@ -47,14 +47,12 @@ Rank: Elite
 
 --- Progress to Next Title (Fighter) ---
 Points needed: 54 more pts
-Progress: [███░░░░░░░] 32%
+PProgress: [██░░░░░░░░] 22%
 
 💡 Training Advice (best single-step upgrades):
   • Sword: HT2 -> LT1 (+15 pts)
   ...
 ```
-
-> Sustituye este bloque por una captura real de tu terminal (con colores) cuando puedas.
 
 ### ⚔️ Modalidades (13)
 
